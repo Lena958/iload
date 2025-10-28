@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instructor Profile - CCISS</title>
+
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1>College of Computing and Information Sciences</h1>
+    <div class="topbar-profile">
+      {% if instructor_image %}
+        <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
+      {% else %}
+        <i class="fas fa-user-circle profile-icon"></i>
+      {% endif %}
+      <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-user">
+      <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo" />
+      {% if instructor_name %}
+        <p><strong>{{ instructor_name }}</strong></p>
+      {% else %}
+        <p><em>Instructor name not found</em></p>
+      {% endif %}
+    </div>
+    <nav class="sidebar-links" aria-label="Navigation Links">
+      <a href="{{ url_for('instructor_dashboard.dashboard') }}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="{{ url_for('instructor.profile') }}" aria-current="page">
+        <i class="fas fa-user"></i> Profile
+      </a>
+      <a href="{{ url_for('instructor.view_my_schedule') }}">
+        <i class="fas fa-calendar"></i> My Schedule
+      </a>
+      <a href="{{ url_for('room.list_rooms') }}">
+        <i class="fas fa-door-open"></i> Rooms
+      </a>
+      <a href="{{ url_for('room.view_availability') }}">
+        <i class="fas fa-calendar-alt"></i> Room Availability
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- Welcome Card -->
+    <div class="welcome-card">
+      <h2>Welcome, {{ instructor_name or 'Instructor' }}!</h2>
+      <p>View and manage your personal profile details here.</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-message flash-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Profile Display -->
+    <div class="profile-display">
+      <div class="profile-image-large">
+        {% if instructor_image %}
+          <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" />
+        {% else %}
+          <i class="fas fa-user-circle"></i>
+        {% endif %}
+      </div>
+
+      <div class="profile-details">
+        {% if instructor_name %}
+          <p><strong>Name:</strong> {{ instructor_name }}</p>
+        {% endif %}
+        {% if instructor_username %}
+          <p><strong>Username:</strong> {{ instructor_username }}</p>
+        {% endif %}
+        {% if instructor_department %}
+          <p><strong>Department:</strong> {{ instructor_department }}</p>
+        {% endif %}
+        {% if instructor_max_load is not none %}
+          <p><strong>Max Load Units:</strong> {{ instructor_max_load }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Update Form -->
+    <form method="POST" action="{{ url_for('instructor.profile') }}" enctype="multipart/form-data" class="container">
+
+      <!-- Profile Image -->
+      <label for="image">Profile Image</label>
+      <input type="file" id="image" name="image" accept="image/*" />
+
+      <!-- Name -->
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ instructor_name or '' }}" required />
+
+      <!-- Username (readonly) -->
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" value="{{ instructor_username or '' }}" readonly />
+
+      <!-- Department -->
+      <label for="department">Department</label>
+      <input type="text" id="department" name="department" value="{{ instructor_department or '' }}" required />
+
+      <!-- Max Load Units -->
+      <label for="max_load_units">Max Load Units</label>
+      <input type="number" id="max_load_units" name="max_load_units" min="0" value="{{ instructor_max_load or '' }}" required />
+
+      <!-- Password Fields -->
+      <p class="password-note">Leave password fields blank if you do not want to change your password.</p>
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" name="current_password" placeholder="Enter current password" />
+
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" name="new_password" placeholder="Enter new password" />
+
+      <label for="confirm_password">Confirm New Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password" />
+
+      <!-- Submit Button -->
+      <button type="submit">
+        <i class="fas fa-save"></i> Update Profile
+      </button>
+    </form>
+
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle" aria-describedby="logoutModalDesc">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()" aria-label="Close Logout Modal">&times;</span>
+      <h3 id="logoutModalTitle">Confirm Logout</h3>
+      <p id="logoutModalDesc">Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="btn btn-danger">Logout</button>
+        <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript for Modal Behavior -->
+  <script>
+    function openLogoutModal(event) {
+      event.preventDefault();
+      document.getElementById('logoutModal').style.display = 'block';
+    }
+
+    function closeLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const logoutModal = document.getElementById('logoutModal');
+      if (event.target === logoutModal) {
+        logoutModal.style.display = "none";
+      }
+    };
+
+    // Optional: Close modal on ESC key
+    window.addEventListener('keydown', function(event) {
+      if (event.key === "Escape") {
+        closeLogoutModal();
+      }
+    });
+  </script>
+</body>
+</html>

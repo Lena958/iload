@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CCISS</title>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+
+</head>
+
+<body>
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1>College of Computing and Information Sciences</h1>
+
+    <div class="topbar-profile">
+      {% if instructor_image %}
+        <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
+      {% else %}
+        <i class="fas fa-user-circle profile-icon"></i>
+      {% endif %}
+
+      <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-user">
+      <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo">
+      {% if instructor_name %}
+        <p><strong>{{ instructor_name }}</strong></p>
+      {% else %}
+        <p><em>Instructor name not found</em></p>
+      {% endif %}
+    </div>
+
+    <nav class="sidebar-links" aria-label="Navigation Links">
+      <a href="{{ url_for('instructor_dashboard.dashboard') }}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="{{ url_for('instructor.profile') }}">
+        <i class="fas fa-user"></i> Profile
+      </a>
+      <a href="{{ url_for('instructor.view_my_schedule') }}">
+        <i class="fas fa-calendar"></i> My Schedule
+      </a>
+      <a href="{{ url_for('room.list_rooms') }}">
+        <i class="fas fa-door-open"></i> Rooms
+      </a>
+      <a href="{{ url_for('room.view_availability') }}">
+        <i class="fas fa-calendar-alt"></i> Room Availability
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Welcome -->
+    <section class="welcome-card">
+      <h2>Welcome back, {{ instructor_name or 'Instructor' }}!</h2>
+      <p>Here’s what’s happening today.</p>
+    </section>
+
+    <!-- Stats -->
+    <section class="dashboard-stats">
+      <div class="stat-card">
+        <p class="stat-label">Total Subjects</p>
+        <h3 class="stat-value">{{ stats.total_subjects }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Scheduled Classes</p>
+        <h3 class="stat-value">{{ stats.scheduled_classes }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Available Rooms</p>
+        <h3 class="stat-value">{{ stats.available_rooms }}</h3>
+      </div>
+    </section>
+
+    <!-- Load Summary -->
+    <section class="schedule-box">
+      <h4 class="schedule-title">My Load Summary</h4>
+      {% if load_summary %}
+        <p><strong>{{ load_summary.current_units }}</strong> / {{ load_summary.max_load_units }} units assigned</p>
+      {% else %}
+        <p><em>No load data available.</em></p>
+      {% endif %}
+    </section>
+
+    <!-- Today's Schedule -->
+    <section class="schedule-box">
+      <h4 class="schedule-title">Today's Schedule</h4>
+      {% if todays_schedule %}
+        <ul class="schedule-list">
+          {% for item in todays_schedule %}
+            <li><strong>{{ item.time }}</strong> — {{ item.subject }} ({{ item.room }})</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><em>No scheduled classes for today.</em></p>
+      {% endif %}
+    </section>
+
+    <!-- Upcoming Classes -->
+    <section class="schedule-box">
+      <h4 class="schedule-title">Upcoming Classes</h4>
+      {% if upcoming_classes %}
+        <ul class="schedule-list">
+          {% for item in upcoming_classes %}
+            <li><strong>{{ item.day }} {{ item.time }}</strong> — {{ item.subject }} ({{ item.room }})</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><em>No upcoming classes scheduled.</em></p>
+      {% endif %}
+    </section>
+
+    <!-- Recent Room Feedback -->
+    <section class="schedule-box">
+      <h4 class="schedule-title">My Recent Room Feedback</h4>
+      {% if room_feedback %}
+        <ul class="schedule-list">
+          {% for fb in room_feedback %}
+            <li>
+              <strong>Room {{ fb.room_number }}</strong> — {{ fb.rating }}
+              {% if fb.comment %}<br><small>"{{ fb.comment }}"</small>{% endif %}
+              <br><small>{{ fb.created_at }}</small>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><em>You haven’t left any feedback yet.</em></p>
+      {% endif %}
+    </section>
+
+    <!-- Chart -->
+    <section class="chart-box">
+      <canvas id="subjectsChart" aria-label="Subjects vs Scheduled Classes" role="img"></canvas>
+    </section>
+  </main>
+
+  <!-- Logout Modal -->
+  <div id="logoutModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()">&times;</span>
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="btn btn-danger">Logout</button>
+        <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById('subjectsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Subjects', 'Scheduled Classes'],
+        datasets: [{
+          data: [{{ stats.total_subjects }}, {{ stats.scheduled_classes }}],
+          backgroundColor: ['#00B4D8', '#90E0EF'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '70%',
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  </script>
+
+  <!-- Logout Modal Script -->
+  <script>
+    function openLogoutModal(event) {
+      event.preventDefault();
+      document.getElementById('logoutModal').style.display = 'block';
+    }
+
+    function closeLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
+
+    window.onclick = function (event) {
+      const logoutModal = document.getElementById('logoutModal');
+      if (event.target === logoutModal) {
+        logoutModal.style.display = "none";
+      }
+    };
+  </script>
+</body>
+</html>

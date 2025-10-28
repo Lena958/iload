@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rooms</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/rooms.css') }}" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+
+    <script>
+      function openDeleteModal(roomId, roomNumber) {
+          document.getElementById('roomName').innerText = roomNumber;
+          document.getElementById('deleteForm').action = `/admin/rooms/delete/${roomId}`;
+          document.getElementById('deleteModal').style.display = 'block';
+      }
+
+      function closeDeleteModal() {
+          document.getElementById('deleteModal').style.display = 'none';
+      }
+
+      window.onclick = function(event) {
+          const modal = document.getElementById('deleteModal');
+          if (event.target === modal) {
+              modal.style.display = "none";
+          }
+      };
+    </script>
+    <script>
+        function openLogoutModal(event) {
+            event.preventDefault(); // Prevent the default anchor navigation
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        // Close modals on click outside
+        window.onclick = function(event) {
+            const deleteModal = document.getElementById('deleteModal');
+            const logoutModal = document.getElementById('logoutModal');
+
+            if (event.target === deleteModal) {
+                deleteModal.style.display = "none";
+            }
+
+            if (event.target === logoutModal) {
+                logoutModal.style.display = "none";
+            }
+        };
+    </script>
+
+</head>
+<body>
+    <div class="topbar">
+        <h1>College of Computing and Information Sciences</h1>
+
+        <div class="topbar-profile">
+            {% if instructor_image %}
+            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
+                alt="Profile Image"
+                class="profile-pic" />
+            {% else %}
+            <i class="fas fa-user-circle profile-icon"></i>
+            {% endif %}
+
+            <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-user">
+            <img src="{{ url_for('static', filename='images/brand.png') }}" 
+            alt="CCISS Logo" 
+            class="sidebar-logo">
+            {% if instructor_name %}
+                <p><strong>{{ instructor_name }}</strong></p>
+            {% else %}
+                <p><em>Instructor name not found</em></p>
+            {% endif %}
+        </div>
+            <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+            <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+            <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+            <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+            <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+            <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+            <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+            <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+        </div>
+
+    <div class="main-content">
+        <div class="welcome-card">
+            <h2>Admin, {{ instructor_name or 'Instructor' }}!</h2>
+            <p>Here’s where you can manage room utilizations.</p>
+        </div>
+        <div class="table-tools">
+            <div class="left">
+                <a href="{{ url_for('rooms.add_room') }}" class="btn">Add Room</a>
+            </div>
+            <div class="right search-box">
+                <div class="search-container">
+                    <input type="text" placeholder="Search..." id="roomSearch" onkeyup="filterRooms(); toggleClearButton()" />
+                    <span class="clear-btn" onclick="clearSearch()">×</span>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Rooms Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Room Number</th>
+                        <th>Room Type</th>
+                        <th>Image</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td>{{ room.room_number }}</td>
+                        <td>{{ room.room_type|capitalize }}</td>
+                        <td>
+                            {% if room.image %}
+                                <img src="{{ url_for('static', filename='room_images/' ~ room.image) }}" 
+                                     alt="Room {{ room.room_number }}" 
+                                     style="width:60px; height:auto; border-radius:4px;">
+                            {% else %}
+                                <em>No image</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('rooms.edit_room', room_id=room.room_id) }}" class="btn btn-small">Edit</a>
+                            <button class="btn btn-small btn-danger" onclick="openDeleteModal('{{ room.room_id }}', '{{ room.room_number }}')">Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align:center;">No rooms found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeleteModal()">&times;</span>
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete <strong id="roomName"></strong>?</p>
+            <form id="deleteForm" method="POST">
+                <button type="submit" class="btn btn-danger">Delete</button>
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogoutModal()">&times;</span>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn btn-danger">Logout</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
+<script>
+    function filterRooms() {
+        const input = document.getElementById("roomSearch");
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector(".table-container table");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) { // Start from 1 to skip table header
+            const tdRoomNumber = tr[i].getElementsByTagName("td")[0];
+            const tdRoomType = tr[i].getElementsByTagName("td")[1];
+
+            if (tdRoomNumber || tdRoomType) {
+                const roomNumberText = tdRoomNumber ? tdRoomNumber.textContent.toLowerCase() : '';
+                const roomTypeText = tdRoomType ? tdRoomType.textContent.toLowerCase() : '';
+                
+                if (roomNumberText.includes(filter) || roomTypeText.includes(filter)) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+<script>
+    function clearSearch() {
+        const input = document.getElementById('roomSearch');
+        input.value = '';
+        input.focus();
+        filterRooms(); // Call your filter function to reset
+        toggleClearButton(); // Hide the clear button
+    }
+
+    function toggleClearButton() {
+        const input = document.getElementById('roomSearch');
+        const clearBtn = document.querySelector('.clear-btn');
+        clearBtn.style.display = input.value ? 'block' : 'none';
+    }
+</script>
+

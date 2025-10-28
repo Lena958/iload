@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Schedule Sheet</title>
+</head>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/copy.css') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+<body>
+    <div class="print-wrapper">
+        <!-- Header -->
+        <div class="header">
+            <h1>University of Antique</h1>
+            <h2>College of Computing and Information Sciences</h2>
+        </div>
+
+        <!-- Container for title + table -->
+        <div class="table-container">
+            <!-- Table title -->
+            {% if search_title %}
+                <div class="table-title">{{ search_title }}</div>
+            {% endif %}
+
+            <!-- Table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th class="time-col">Time</th>
+                        {% for day in days %}
+                            <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in range(time_slots|length) %}
+                    <tr>
+                        <!-- Time column showing actual start and end time -->
+                        <td class="time-col">
+                            {% set cell_time = None %}
+                            {% for day in days %}
+                                {% if grid[day][i] not in ["skip", None] and cell_time is none %}
+                                    {% set cell_time = grid[day][i] %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if cell_time %}
+                                {{ cell_time.start_time.strftime("%I:%M %p") }} - {{ cell_time.end_time.strftime("%I:%M %p") }}
+                            {% else %}
+                                {{ time_slots[i].strftime("%I:%M %p") }}
+                            {% endif %}
+                        </td>
+
+                        {% for day in days %}
+                            {% set cell = grid[day][i] %}
+                            {% if cell == "skip" %}
+                                {# skip merged cells #}
+                            {% elif cell %}
+                                <td rowspan="{{ cell.rowspan }}" class="class-cell">
+                                    <strong>{{ cell.instructor_name }}</strong> <br>
+                                    {{ cell.subject_code }}<br>
+                                    {{ cell.course }} {{ cell.year_level }}-{{ cell.section }}<br>
+                                    {{ cell.room_number }} ({{ cell.room_type|capitalize }})
+                                </td>
+                            {% else %}
+                                <td></td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+   <div class="print-btn">
+        <button class="print" onclick="window.print()">Print</button>
+        <button class="back" onclick="window.location.href='{{ url_for('load.view_all_schedules') }}'">Back to Schedules</button>
+    </div>
+</body>
+</html>

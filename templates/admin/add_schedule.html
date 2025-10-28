@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Add Schedule</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-user">
+      <i class="fas fa-user-circle" style="font-size: 2rem; color: #F5C500"></i><br />
+      {% if instructor_name %}
+      <p><strong>{{ instructor_name }}</strong></p>
+      {% else %}
+      <p><em>Instructor name not found</em></p>
+      {% endif %}
+    </div>
+     <a href="{{ url_for('dashboard.admin_dashboard') }}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="{{ url_for('admin.profile') }}" class="active"><i class="fas fa-user"></i> Profile</a>
+      <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+      <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+      <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+      <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+      <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+      <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>
+      <a href="{{ url_for('feedback.list_feedback') }}"><i class="fas fa-comment-dots"></i> Courses</a>
+      <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </div>
+
+  <div class="main-content">
+    <div class="main-form">
+      <h2>Add Schedule</h2>
+      <form method="POST">
+        <label>Subject:</label>
+        <select name="subject_id" required>
+          <option value="" disabled selected>Select Subject</option>
+          {% for subject in subjects %}
+          <option value="{{ subject.subject_id }}">
+            {{ subject.code }} - {{ subject.name }}
+            ({{ subject.year_level }} - {{ subject.section }} - {{ subject.course }})
+          </option>
+          {% endfor %}
+        </select>
+
+        <label>Instructor:</label>
+        <select name="instructor_id" required>
+          <option value="" disabled selected>Select Instructor</option>
+          {% for instructor in instructors %}
+          <option value="{{ instructor.instructor_id }}">{{ instructor.name }}</option>
+          {% endfor %}
+        </select>
+
+        <label>Room:</label>
+        <select name="room_id" required>
+          <option value="" disabled selected>Select Room</option>
+          {% for room in rooms %}
+          <option value="{{ room.room_id }}">
+            {{ room.room_number }} - {{ room.room_type|capitalize }}
+          </option>
+          {% endfor %}
+        </select>
+
+        <label>Day of Week:</label>
+        <select name="day_of_week" required>
+          <option value="" disabled selected>Select Day</option>
+          {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+          <option value="{{ day }}">{{ day }}</option>
+          {% endfor %}
+        </select>
+
+        <label>Start Time:</label>
+        <input type="time" name="start_time" required />
+
+        <label>End Time:</label>
+        <input type="time" name="end_time" required />
+
+        <button type="submit" class="btn">Add Schedule</button>
+        <a href="{{ url_for('schedules.list_schedules') }}" class="btn btn-secondary"
+          >Cancel</a
+        >
+      </form>
+    </div>
+  </div>
+</body>
+</html>

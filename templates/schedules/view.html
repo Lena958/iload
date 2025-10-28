@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>All Schedules</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/view.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+</head>
+<body>
+   <div class="topbar">
+        <h1>College of Computing and Information Sciences</h1>
+
+        <div class="topbar-profile">
+            {% if instructor_image %}
+            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
+                alt="Profile Image"
+                class="profile-pic" />
+            {% else %}
+            <i class="fas fa-user-circle profile-icon"></i>
+            {% endif %}
+
+            <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-user">
+            <img src="{{ url_for('static', filename='images/brand.png') }}" 
+            alt="CCISS Logo" 
+            class="sidebar-logo">
+            {% if instructor_name %}
+                <p><strong>{{ instructor_name }}</strong></p>
+            {% else %}
+                <p><em>Instructor name not found</em></p>
+            {% endif %}
+        </div>
+            <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+            <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+            <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+            <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+            <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+            <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+            <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+            <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+    </div>
+
+    <div class="main-content">
+        <!-- Search Title -->
+        {% if search_title %}
+            <div class="search-title-container">
+                <div class="search-title">
+                    {{ search_title|upper }}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Search Bar and Action Buttons -->
+        <div class="search-back-wrapper">
+            <div class="search-container">
+                <form method="get" action="{{ url_for('load.view_all_schedules') }}">
+                    <input type="text" name="q" placeholder="Search by instructor, room, or course/year/section" value="{{ request.args.get('q', '') }}">
+                    <button type="submit"><i class="fas fa-search"></i> Search</button>
+                </form>
+            </div>
+
+            <div class="action-buttons">
+                {% if not request.args.get('q') %}
+                    <a href="{{ url_for('schedules.list_schedules') }}" class="btn-back">Back to Schedules</a>
+                {% else %}
+                    <a href="{{ url_for('load.view_all_schedules') }}" class="btn-back">Back</a>
+                    <a href="{{ url_for('load.view_copy', q=request.args.get('q')) }}" class="btn-copy">View Copy</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if grid and days and time_slots %}
+        <!-- GRID TIMETABLE VIEW -->
+        <div class="table-container">
+            <table class="final-schedule">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        {% for day in days %}
+                            <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in time_slots %}
+                    <tr>
+                        <td>{{ slot.label }}</td>
+                        {% for day in days %}
+                            <td>
+                                {% for sched in grid[day] %}
+                                    {% if sched.start_time.hour == slot.time.hour %}
+                                        <div class="sched-block">
+                                            <strong>{{ sched.subject_code }}</strong><br>
+                                            {{ sched.subject_code }}<br>
+                                            {{ sched.course }} {{ sched.year_level }}-{{ sched.section }}<br>
+                                            {{ sched.room_number }} ({{ sched.room_type|capitalize }})<br>
+                                            {{ sched.instructor_name }}<br>
+                                            <small>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</small>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if total_units %}
+                <p><strong>Total Units (Weekly): {{ total_units }}</strong></p>
+            {% endif %}
+        </div>
+        {% elif schedules %}
+        <!-- LIST VIEW -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Subject</th>
+                        <th>Year & Section</th>
+                        <th>Course</th>
+                        <th>Instructor</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sched in schedules %}
+                    <tr>
+                        <td>{{ sched.day_of_week }}</td>
+                        <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                        <td>{{ sched.subject_code }}</td>
+                        <td>{{ sched.year_level }} - {{ sched.section }}</td>
+                        <td>{{ sched.course }}</td>
+                        <td>{{ sched.instructor_name }}</td>
+                        <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p style="text-align:center;">No schedules found.</p>
+        {% endif %}
+    </div>
+     <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogoutModal()">&times;</span>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn btn-danger">Logout</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+     <script>
+        function openLogoutModal(event) {
+            event.preventDefault(); // Prevent the default anchor navigation
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        // Close modals on click outside
+        window.onclick = function(event) {
+            const deleteModal = document.getElementById('deleteModal');
+            const logoutModal = document.getElementById('logoutModal');
+
+            if (event.target === deleteModal) {
+                deleteModal.style.display = "none";
+            }
+
+            if (event.target === logoutModal) {
+                logoutModal.style.display = "none";
+            }
+        };
+    </script>
+
+</body>
+</html>

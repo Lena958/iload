@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Scheduling System</title>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header-content">
+        <div class="logo-group">
+            <div class="logo-text-group">
+                <img src="{{ url_for('static', filename='images/ua logo.png') }}" alt="UA Logo" class="logo">
+                <span class="logo-text">University of Antique</span>
+            </div>
+
+            <div class="logo-text-group">
+                <img src="{{ url_for('static', filename='images/ccs logo.png') }}" alt="CCS Logo" class="logo">
+                <span class="logo-text">College of Computing and Information Sciences</span>
+            </div>
+        </div>
+
+        <div class="header-login">
+            <a href="{{ url_for('login') }}" class="login-button">Login</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-box">
+            <div class="footer-item"><i class="fab fa-facebook"></i> CCIS UA Main</div>
+            <div class="footer-item"><i class="fas fa-envelope"></i> ccis@antiquespride.edu.ph</div>
+            <div class="footer-item"><i class="fas fa-phone"></i> (+63) 912 3456 789</div>
+            <div class="footer-item"><i class="fas fa-map-marker-alt"></i>Mayor Santiago Lotilla St., District I, Sibalom, Antique</div>
+        </div>
+    </footer>
+
+</body>
+</html>

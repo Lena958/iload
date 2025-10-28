@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CCISS</title>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/my_schedule.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1>College of Computing and Information Sciences</h1>
+    <div class="topbar-profile">
+      {% if instructor_image %}
+        <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
+      {% else %}
+        <i class="fas fa-user-circle profile-icon"></i>
+      {% endif %}
+      <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-user">
+        <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo" />
+        {% if instructor_name %}
+          <p><strong>{{ instructor_name }}</strong></p>
+        {% else %}
+          <p><em>Instructor name not found</em></p>
+        {% endif %}
+      </div>
+
+      <a href="{{ url_for('instructor_dashboard.dashboard') }}">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="{{ url_for('instructor.profile') }}">
+        <i class="fas fa-user"></i> Profile
+      </a>
+      <a href="{{ url_for('instructor.view_my_schedule') }}">
+        <i class="fas fa-calendar"></i> My Schedule
+      </a>
+      <a href="{{ url_for('room.list_rooms') }}">
+        <i class="fas fa-door-open"></i> Rooms
+      </a>
+      <a href="{{ url_for('room.view_availability') }}">
+        <i class="fas fa-calendar-alt"></i> Room Availability
+      </a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+
+      <div class="print-wrapper">
+
+        <!-- Header -->
+        <header class="header">
+          <h1>University of Antique</h1>
+          <h2>College of Computing and Information Sciences</h2>
+        </header>
+
+        <!-- Schedule Table -->
+        <section class="table-container">
+          <h3 class="table-title">
+            Instructor{% if instructor_name %}: {{ instructor_name }}{% endif %}
+          </h3>
+
+          {% if days and time_slots and grid %}
+            <table>
+              <thead>
+                <tr>
+                  <th class="time-col" scope="col">Time</th>
+                  {% for day in days %}
+                    <th scope="col">{{ day }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for i in range(time_slots|length) %}
+                <tr>
+                  <!-- Time Slot -->
+                  <td class="time-col" scope="row">
+                    {{ time_slots[i].strftime("%I:%M %p") }}
+                  </td>
+
+                  <!-- Schedule Cells -->
+                  {% for day in days %}
+                    {% set cell = grid[day][i] %}
+                    {% if cell == "skip" %}
+                      {# Skip merged cells #}
+                    {% elif cell %}
+                      <td rowspan="{{ cell.rowspan }}" class="class-cell" title="{{ cell.subject_name }} ({{ cell.subject_code }})">
+                        <strong>{{ cell.subject_code }}</strong><br />
+                        {{ cell.course }} {{ cell.year_level }}-{{ cell.section }}<br />
+                        {{ cell.room_number }} ({{ cell.room_type|capitalize }})
+                      </td>
+                    {% else %}
+                      <td></td>
+                    {% endif %}
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p>No schedule data available.</p>
+          {% endif %}
+        </section>
+
+      </div>
+
+      <!-- Print & Back Buttons -->
+      <div class="print-btn">
+        <button class="print" onclick="window.print()">Print</button>
+        <button class="back" onclick="window.location.href='{{ url_for('instructor_dashboard.dashboard') }}'">Back to Dashboard</button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()">&times;</span>
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="btn btn-danger">Logout</button>
+        <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    function openLogoutModal(event) {
+      event.preventDefault();
+      document.getElementById('logoutModal').style.display = 'block';
+    }
+
+    function closeLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+      const logoutModal = document.getElementById('logoutModal');
+      if (event.target === logoutModal) {
+        logoutModal.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>

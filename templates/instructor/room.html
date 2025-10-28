@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CCISS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/instructor_room.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="topbar">
+        <h1>College of Computing and Information Sciences</h1>
+        <div class="topbar-profile">
+            {% if instructor_image %}
+                <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
+            {% else %}
+                <i class="fas fa-user-circle profile-icon"></i>
+            {% endif %}
+            <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-user">
+            <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo">
+            {% if instructor_name %}
+                <p><strong>{{ instructor_name }}</strong></p>
+            {% else %}
+                <p><em>Instructor name not found</em></p>
+            {% endif %}
+        </div>
+        <nav class="sidebar-links" aria-label="Navigation Links">
+            <a href="{{ url_for('instructor_dashboard.dashboard') }}">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="{{ url_for('instructor.profile') }}">
+                <i class="fas fa-user"></i> Profile
+            </a>
+            <a href="{{ url_for('instructor.view_my_schedule') }}" aria-current="page">
+                <i class="fas fa-calendar"></i> My Schedule
+            </a>
+            <a href="{{ url_for('room.list_rooms') }}">
+                <i class="fas fa-door-open"></i> Rooms
+            </a>
+            <a href="{{ url_for('room.view_availability') }}">
+                <i class="fas fa-calendar-alt"></i> Room Availability
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content content">
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for message in messages %}
+                        <li>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        {% if rooms %}
+            {% for room in rooms %}
+                <div class="room-card">
+
+                    <!-- Room Header -->
+                    <div class="room-header">
+                        <h3>Room {{ room.room_number }} ({{ room.room_type }})</h3>
+                    </div>
+
+                    <!-- Room Image -->
+                    {% if room.image %}
+                        <div class="room-image">
+                            <img src="{{ url_for('static', filename='images/' ~ room.image) }}" alt="Room Image">
+                        </div>
+                    {% endif %}
+
+                    <!-- Feedback Section -->
+                    <div class="feedback-section">
+                        {% if feedback[room.room_id] %}
+                            {% for fb in feedback[room.room_id] %}
+                                {% if fb.rating %}
+                                    <p>Rating: {{ fb.rating }}</p>
+                                {% endif %}
+                                {% if fb.comments %}
+                                    <p>Comment: {{ fb.comments }}</p>
+                                {% endif %}
+                                <small>{{ fb.feedback_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                <hr>
+                            {% endfor %}
+                        {% else %}
+                            <p>No feedback yet.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Feedback Form -->
+                    <form action="{{ url_for('room.submit_feedback', room_id=room.room_id) }}" method="POST" class="feedback-form">
+                        <label for="satisfaction_{{ room.room_id }}">Rating:</label>
+                        <select name="satisfaction" id="satisfaction_{{ room.room_id }}">
+                            <option>--Select--</option>
+                            <option>Unsatisfied</option>
+                            <option>Satisfied</option>
+                        </select>
+
+                        <label for="comments_{{ room.room_id }}">Comment:</label>
+                        <textarea name="comments" id="comments_{{ room.room_id }}" rows="3"></textarea>
+
+                        <button type="submit">Submit Feedback</button>
+                    </form>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No rooms assigned yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogoutModal()">&times;</span>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn btn-danger">Logout</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openLogoutModal(event) {
+            event.preventDefault(); // Prevent the default anchor navigation
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        // Close modals on click outside
+        window.onclick = function(event) {
+            const deleteModal = document.getElementById('deleteModal');
+            const logoutModal = document.getElementById('logoutModal');
+
+            if (event.target === deleteModal) {
+                deleteModal.style.display = "none";
+            }
+
+            if (event.target === logoutModal) {
+                logoutModal.style.display = "none";
+            }
+        };
+    </script>
+</body>
+</html>

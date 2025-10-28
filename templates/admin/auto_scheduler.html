@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Auto Scheduler</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auto_scheduler.css') }}" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+
+  <style>
+    .conflict-row td {
+      font-weight: bold;
+      border-color: #f5c2c7; /* subtle red borders */
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>College of Computing and Information Sciences</h1>
+    <div class="topbar-profile">
+      {% if instructor_image %}
+        <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
+      {% else %}
+        <i class="fas fa-user-circle profile-icon"></i>
+      {% endif %}
+      <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-user">
+      <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo">
+      {% if instructor_name %}
+        <p><strong>{{ instructor_name }}</strong></p>
+      {% else %}
+        <p><em>Instructor name not found</em></p>
+      {% endif %}
+    </div>
+        <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+        <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+        <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+        <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+        <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+        <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+        <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+        <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+
+  </div>
+
+  <main class="main-content">
+    <div class="welcome-card">
+      <h2>Admin, {{ instructor_name or 'Instructor' }}!</h2>
+      <p>Here's where you can generate schedules.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes" role="alert">
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form id="generateForm" method="POST" action="{{ url_for('auto_scheduler.generate_schedule') }}" class="schedule-form">
+      <div class="form-group">
+        <label for="start_time">Start Time:</label>
+        <input type="time" name="start_time" value="07:00" required>
+      </div>
+
+      <div class="form-group">
+        <label for="end_time">End Time:</label>
+        <input type="time" name="end_time" value="19:00" required>
+      </div>
+
+      <div class="form-group">
+        <label for="semester">Semester:</label>
+        <select name="semester" required>
+          <option value="First Semester">First Semester</option>
+          <option value="Second Semester">Second Semester</option>
+          <option value="Summer">Summer</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="school_year">School Year:</label>
+        <input type="text" name="school_year" placeholder="e.g. 2024-2025" required>
+      </div>
+
+      <button type="submit" class="btn btn-generate">Generate Schedule</button>
+    </form>
+
+    <section class="table-container" aria-label="Pending schedules table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Time</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Year & Section</th>
+            <th scope="col">Course</th>
+            <th scope="col">Instructor</th>
+            <th scope="col">Room</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if schedules %}
+            {% for sched in schedules %}
+              <tr class="{% if sched.schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
+                <td>{{ sched.day_of_week }}</td>
+                <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                <td>{{ sched.subject_name }}</td>
+                <td>{{ sched.year_level }} - {{ sched.section }}</td>
+                <td>{{ sched.course }}</td>
+                <td>{{ sched.instructor_name }}</td>
+                <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align:center;">No pending schedules found.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Schedule Confirmation Modal -->
+  <div id="confirmModal"
+       class="modal"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="modalTitle"
+       aria-describedby="modalDesc"
+       aria-hidden="true"
+       style="display: none;">
+    <div class="modal-content">
+      <p id="modalDesc">
+        Schedule already generated. Would you like to generate again?
+      </p>
+      <div class="modal-buttons">
+        <button id="modalYes" class="btn-modal btn-yes">Yes</button>
+        <button id="modalCancel" class="btn-modal btn-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()">&times;</span>
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="btn btn-danger">Logout</button>
+        <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('generateForm');
+      const modal = document.getElementById('confirmModal');
+      const btnYes = document.getElementById('modalYes');
+      const btnCancel = document.getElementById('modalCancel');
+
+      const scheduleAlreadyGenerated = "{{ session.get('schedule_generated', False) | tojson }}";
+
+      form.addEventListener('submit', function (event) {
+        if (scheduleAlreadyGenerated === "true") {
+          event.preventDefault();
+          modal.style.display = 'block';
+          modal.setAttribute('aria-hidden', 'false');
+          modal.focus();
+        }
+      });
+
+      btnYes.addEventListener('click', function () {
+        modal.setAttribute('aria-hidden', 'true');
+        modal.style.display = 'none';
+        form.submit();
+      });
+
+      btnCancel.addEventListener('click', function () {
+        modal.setAttribute('aria-hidden', 'true');
+        modal.style.display = 'none';
+      });
+
+      window.addEventListener('click', function (event) {
+        if (event.target === modal) {
+          modal.setAttribute('aria-hidden', 'true');
+          modal.style.display = 'none';
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && modal.getAttribute('aria-hidden') === 'false') {
+          modal.setAttribute('aria-hidden', 'true');
+          modal.style.display = 'none';
+        }
+      });
+    });
+  </script>
+
+  <script>
+    function openLogoutModal(event) {
+      event.preventDefault();
+      document.getElementById('logoutModal').style.display = 'block';
+    }
+
+    function closeLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
+
+    window.onclick = function (event) {
+      const logoutModal = document.getElementById('logoutModal');
+      if (event.target === logoutModal) {
+        logoutModal.style.display = "none";
+      }
+    };
+  </script>
+</body>
+</html>

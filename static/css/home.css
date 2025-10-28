@@ -1,0 +1,164 @@
+/* === Background === */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('../images/cover.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+}
+
+/* === Base Styles === */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden; /* Disable scrolling */
+    font-family: 'Times New Roman', Times, serif;
+    color: #dce4e0;
+    display: flex;
+    flex-direction: column;
+}
+
+body {
+    min-height: 100vh;
+    padding-top: 10px;
+    padding-bottom: 100px; /* prevent overlap with fixed footer */
+}
+
+/* === Header === */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    flex-wrap: nowrap;
+    width: 100%;
+    margin-top: 20px; /* Added margin to move header down */
+}
+
+.header-login {
+    display: flex;
+    align-items: center;
+    padding-right: 790px; /* Space from right edge */
+}
+
+.logo-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo-text-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 20px;
+}
+
+.logo {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
+.logo-text {
+    font-size: 18px;
+    white-space: nowrap;
+    color: #000000;
+}
+
+/* === Login Button === */
+.login-button {
+    font-size: 18px;
+    width: 100px;
+    padding: 12px 32px;
+    background-color: #03045E;
+    color: #cAf0f8;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    line-height: normal;
+    font-weight: 600;
+    display: inline-block;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.login-button:hover {
+    background-color: #0077B6;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+/* === Footer === */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.footer-box {
+    max-width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 20px 20px;
+    gap: 80px;
+    flex-wrap: wrap;
+    color: #cAf0f8;
+    font-size: 16px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background-color: #03045E;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.footer-box i {
+    color: #F5C400;
+}
+
+/* === Responsive Design === */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .login-button {
+        font-size: 16px;
+        padding: 10px 24px;
+    }
+
+    .header-login {
+        padding-right: 0; /* Remove extra space on small screens */
+        margin-top: 10px;
+    }
+
+    .footer-box {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        text-align: center;
+        padding: 20px;
+    }
+}
+

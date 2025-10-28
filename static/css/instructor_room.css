@@ -1,0 +1,396 @@
+/* ====== Admin Dashboard CSS (Updated with Inter) ====== */
+
+/* ========== Google Fonts ========== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+/* ========== Variables ========== */
+:root {
+  --blue-dark: #03045E;
+  --blue-mid:  #0077B6;
+  --blue-bright: #00B4D8;
+  --gold: #F5C400;
+  --bg-light: #f8f9fb;
+  --text: #222;
+  --muted: #6b7280;
+  --card-shadow: rgba(3, 4, 94, 0.06);
+  --transition-fast: 180ms;
+}
+
+/* ========== Reset & Base ========== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.45;
+}
+
+/* ========== Sidebar ========== */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: #0077B6;
+  background: linear-gradient(0deg,rgba(0, 119, 182, 1) 0%, rgba(3, 4, 94, 1) 31%);
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;        /* ⬅️ Reduce this */
+  padding-bottom: 18px;
+  box-shadow: 2px 0 10px var(--card-shadow);
+  z-index: 1000;
+}
+
+.sidebar-user {
+  padding: 12px 18px; /* was 24px — tighten it */
+  text-align: center;
+  color: #fff;
+  border-bottom: 2px solid rgba(245,196,0,0.12);
+}
+
+.sidebar-logo {
+  width: 160px !important;
+  height: auto !important;
+  display: block;
+  margin: 0 auto 10px auto;
+}
+
+.sidebar-user p {
+  font-family: Verdana, sans-serif;
+  margin-top: -5px;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sidebar a {
+  color: #fff;
+  padding: 14px 20px;
+  margin-left: 7px;
+  text-decoration: none;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-weight: 600;
+  font-family: Verdana, sans-serif;
+  font-size: 15px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar a i {
+  color: var(--gold);
+  font-size: 16px;
+  width: 18px;
+  text-align: center;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+  background-color: rgba(0, 119, 182, 0.15);
+  color: #fff;
+}
+.sidebar a:hover i,
+.sidebar a.active i {
+  color: #fff;
+}
+
+/* ========== Top Bar ========== */
+.topbar {
+  height: 80px;
+  width: calc(100% - 240px); /* Prevent overflow due to sidebar */
+  margin-left: 240px;         /* Account for the sidebar width */
+  background: linear-gradient(90deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Push left/right */
+  padding: 0 24px;                /* Adjust padding so image stays inside */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1100;
+  box-sizing: border-box;
+}
+
+.topbar h1 {
+  font-family: Verdana, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin: 0;
+  color: #fff;
+}
+
+.topbar-profile {
+  display: flex;
+  align-items: center;
+  margin-right: 25px;
+  gap: 20px;
+}
+
+.profile-pic {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #F5C400;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-family: Verdana, sans-serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.logout-btn i {
+  margin-right: 6px; /* space between icon and text */
+  font-size: 18px;
+  color:#F5C400;
+}
+
+.logout-btn:hover {
+  color: #ddd; /* lighter color on hover */
+}
+/* ========== Main Content ========== */
+.main-content {
+  margin-left: 240px;
+  margin-top: 80px;
+  padding: 28px 36px;
+  flex: 1;
+}
+
+.modal {
+        display: none; /* Hidden by default */
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5); /* Dim background */
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 6px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        position: relative;
+    }
+
+    .modal-content h3 {
+        margin-top: 0;
+    }
+
+    .modal-content form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+
+    .modal-content .btn {
+        margin-right: 10px;
+    }
+
+    /* Modal Button Base Style */
+.modal-content .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Logout (Danger) Button */
+.modal-content .btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal-content .btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* Cancel (Secondary) Button */
+.modal-content .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal-content .btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+
+/* ====== Room Feedback Content (Modernized) ====== */
+.content {
+  margin-left: 240px;
+  margin-top: 120px;
+  padding: 20px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.content h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-top: 80px;
+  margin-bottom: 30px;
+  align-self: flex-start;
+  color: var(--blue-dark);
+}
+
+.flash-messages li {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  width: 100%;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ===== Room Card Styling ===== */
+.room-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  padding: 20px;
+  max-width: 1500px; /* reduced width */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.room-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.room-card img {
+  width: 100%;
+  height: 700px; /* smaller height */
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+/* ===== Feedback Section ===== */
+.feedback-section {
+  text-align: left;
+  margin-top: 15px;
+  background: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.feedback-section p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.feedback-section hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 8px 0;
+}
+
+/* ===== Feedback Form ===== */
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedback-form select {
+  width: 150px; /* decrease width */
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+}
+
+
+.feedback-form label {
+  font-weight: 500;
+}
+
+.feedback-form textarea {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  resize: vertical;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+}
+
+.feedback-form button {
+  align-self: flex-start;
+  background-color: var(--blue-mid);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.feedback-form button:hover {
+  background-color: var(--blue-dark);
+  transform: translateY(-2px);
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 1024px) {
+  .content {
+    padding: 20px 30px;
+  }
+
+  .room-card {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    margin-top: 100px;
+    padding: 15px;
+    align-items: center;
+  }
+
+  .room-card img {
+    height: 180px; /* smaller for mobile */
+  }
+}

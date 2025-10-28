@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Room Availability</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/copy.css') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+<style>
+  /* Schedule (occupied) */
+  .class-cell {
+      background-color: #f88; /* red */
+      cursor: pointer;
+      word-wrap: break-word;
+      vertical-align: middle;
+  }
+  /* Free/available */
+  .free {
+      background-color: #8f8; /* green */
+      cursor: pointer;
+  }
+  /* Time column styling */
+  .time-col {
+      width: 100px;
+  }
+</style>
+</head>
+<body>
+    
+<div class="print-wrapper">
+    <div class="header">
+        <h1>University of Antique</h1>
+        <h2>College of Computing and Information Sciences</h2>
+    </div>
+
+    {% for room in rooms %}
+    <div class="table-container">
+        <div class="table-title">Room {{ room.room_number }} ({{ room.room_type }})</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="time-col">Time</th>
+                    {% for day in days_of_week %}
+                        <th>{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% set num_blocks = time_blocks|length %}
+                {% set skip = {} %}
+
+                {% for i in range(num_blocks) %}
+                <tr>
+                    <!-- Time column -->
+                    <td class="time-col">
+                        {% set cell_time = None %}
+                        {% for day in days_of_week %}
+                            {% set day_slots = availability[room.room_id][day] %}
+                            {% if day_slots[i] is defined and day_slots[i].type == 'schedule' and cell_time is none %}
+                                {% set cell_time = day_slots[i].data %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if cell_time %}
+                            {{ cell_time.start_time.strftime("%I:%M %p") }} - {{ cell_time.end_time.strftime("%I:%M %p") }}
+                        {% else %}
+                            {{ time_blocks[i].strftime("%I:%M %p") }}
+                        {% endif %}
+                    </td>
+
+                    {% for day in days_of_week %}
+                        {% set day_slots = availability[room.room_id][day] %}
+
+                        {% if skip[day] is defined and i < skip[day] %}
+                            {# skip cell because previous rowspan covers it #}
+                        {% elif day_slots[i] is defined %}
+                            {% set cell = day_slots[i] %}
+                            {% if cell.type == 'schedule' %}
+                                {% set rowspan = cell.data.rowspan|default(1) %}
+                                {% set skip = skip.update({day: i + rowspan}) %}
+                                <td rowspan="{{ rowspan }}" class="class-cell" title="Instructor: {{ cell.data.instructor_name }}
+Subject: {{ cell.data.subject_code }}
+Section: {{ cell.data.section }}
+Year Level: {{ cell.data.year_level }}
+Time: {{ cell.data.start_time }} - {{ cell.data.end_time }}">
+                                    <strong>{{ cell.data.instructor_name }}</strong><br>
+                                    {{ cell.data.subject_code }}<br>
+                                    {{ cell.data.section }} - {{ cell.data.year_level }}
+                                </td>
+                            {% elif cell.type == 'free' %}
+                                <td class="free"></td>
+                            {% endif %}
+                        {% else %}
+                            <td class="free"></td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard</title>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+
+  <!-- FontAwesome for sidebar icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"rel="stylesheet"/>
+</head>
+<body>
+ <div class="topbar">
+        <h1>College of Computing and Information Sciences</h1>
+
+        <div class="topbar-profile">
+            {% if instructor_image %}
+            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
+                alt="Profile Image"
+                class="profile-pic" />
+            {% else %}
+            <i class="fas fa-user-circle profile-icon"></i>
+            {% endif %}
+
+            <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-user">
+            <img src="{{ url_for('static', filename='images/brand.png') }}" 
+            alt="CCISS Logo" 
+            class="sidebar-logo">
+            {% if instructor_name %}
+                <p><strong>{{ instructor_name }}</strong></p>
+            {% else %}
+                <p><em>Instructor name not found</em></p>
+            {% endif %}
+        </div>
+            <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+            <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+            <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+            <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+            <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+            <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+            <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+            <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+        </div>
+
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <div class="main-content">
+    <!-- Welcome Banner -->
+    <div class="welcome-card">
+      <h2>Welcome back, {{ instructor_name or 'Instructor' }}!</h2>
+      <p>Here’s what’s happening in your department today.</p>
+    </div>
+
+    <!-- Stat Cards (Dynamic from DB) -->
+    <div class="dashboard-stats">
+      <div class="stat-card">
+        <p class="stat-label">Total Instructors</p>
+        <h3 class="stat-value">{{ stats.total_instructors }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Subjects</p>
+        <h3 class="stat-value">{{ stats.total_subjects }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Rooms</p>
+        <h3 class="stat-value">{{ stats.total_rooms }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Conflicts</p>
+        <h3 class="stat-value">{{ stats.conflicts }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Schedules</p>
+        <h3 class="stat-value">{{ stats.schedules }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Feedback (Satisfied)</p>
+        <h3 class="stat-value">{{ stats.satisfied_feedback }}</h3>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Feedback (Unsatisfied)</p>
+        <h3 class="stat-value">{{ stats.unsatisfied_feedback }}</h3>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <div class="chart-box">
+        <h4 class="chart-title">Room Usage</h4>
+        <canvas id="roomChart" height="180"></canvas>
+      </div>
+      <div class="chart-box">
+        <h4 class="chart-title">Instructor Load</h4>
+        <canvas id="instructorChart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Instructors -->
+    <div class="schedule-box">
+      <h4 class="schedule-title">Top Instructors by Load</h4>
+      <div class="top-instructors">
+        {% for instr in top_instructors %}
+          <div class="stat-card">
+            {% if instr.image %}
+              <img src="{{ url_for('static', filename='uploads/' ~ instr.image) }}" 
+                   alt="{{ instr.name }}" style="width:100%; border-radius:8px; max-height:150px; object-fit:cover;">
+            {% else %}
+              <img src="{{ url_for('static', filename='images/default.png') }}" 
+                   alt="{{ instr.name }}" style="width:100%; border-radius:8px; max-height:150px; object-fit:cover;">
+            {% endif %}
+            <h4>{{ instr.name }}</h4>
+            <p>{{ instr.current_units }} / {{ instr.max_load_units }} units</p>
+            <small>Subjects: {{ instr.subjects | join(', ') }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recent Conflicts -->
+    <div class="schedule-box">
+      <h4 class="schedule-title">Recent Conflicts</h4>
+      {% if recent_conflicts %}
+        <ul class="schedule-list">
+          {% for conflict in recent_conflicts %}
+            <li>
+              <strong>{{ conflict.conflict_type }}</strong> — 
+              {{ conflict.description }} ({{ conflict.status }})
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><em>No conflicts found.</em></p>
+      {% endif %}
+    </div>
+  </div>
+  <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogoutModal()">&times;</span>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn btn-danger">Logout</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+  <!-- Chart.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Room Usage Chart (Dynamic)
+    const roomLabels = {{ room_usage | map(attribute='room_number') | list | tojson }};
+    const roomData = {{ room_usage | map(attribute='schedules_count') | list | tojson }};
+    const roomChart = new Chart(document.getElementById('roomChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: roomLabels,
+        datasets: [{
+          label: 'Schedules',
+          data: roomData,
+          backgroundColor: 'rgba(0, 119, 182, 0.7)',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    // Instructor Load Chart (Dynamic)
+    const instrLabels = {{ instructor_load | map(attribute='name') | list | tojson }};
+    const instrData = {{ instructor_load | map(attribute='current_units') | list | tojson }};
+    const instructorChart = new Chart(document.getElementById('instructorChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: instrLabels,
+        datasets: [{
+          data: instrData,
+          backgroundColor: ['#00B4D8', '#48CAE4', '#90E0EF', '#CAF0F8', '#E0E0E0'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+  </script>
+  <script>
+        function openLogoutModal(event) {
+            event.preventDefault(); // Prevent the default anchor navigation
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        // Close modals on click outside
+        window.onclick = function(event) {
+            const deleteModal = document.getElementById('deleteModal');
+            const logoutModal = document.getElementById('logoutModal');
+
+            if (event.target === deleteModal) {
+                deleteModal.style.display = "none";
+            }
+
+            if (event.target === logoutModal) {
+                logoutModal.style.display = "none";
+            }
+        };
+    </script>
+</body>
+</html>
