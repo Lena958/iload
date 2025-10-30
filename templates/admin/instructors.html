@@ -48,8 +48,7 @@
           <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
           <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
           <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
-
-        </div>
+    </div>
 
   <!-- Main content -->
   <div class="main-content">
@@ -76,6 +75,8 @@
             <th>Name</th>
             <th>Max Load Units</th>
             <th>Department</th>
+            <th>Program</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -85,6 +86,8 @@
             <td data-label="Name">{{ instructor.name }}</td>
             <td data-label="Max Load Units">{{ instructor.max_load_units }}</td>
             <td data-label="Department">{{ instructor.department or 'N/A' }}</td>
+            <td data-label="Program">{{ instructor.program or 'N/A' }}</td>
+            <td data-label="Status">{{ instructor.status or 'N/A' }}</td>
             <td data-label="Actions">
               <a href="{{ url_for('instructors.edit_instructor', instructor_id=instructor.instructor_id) }}" class="btn btn-small">Edit</a>
               <button class="btn btn-small btn-danger" onclick="openDeleteModal('{{ instructor.instructor_id }}', '{{ instructor.name }}')">Delete</button>
@@ -92,7 +95,7 @@
           </tr>
           {% else %}
           <tr>
-            <td colspan="4" style="text-align:center;">No instructors found.</td>
+            <td colspan="6" style="text-align:center;">No instructors found.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -112,6 +115,7 @@
       </form>
     </div>
   </div>
+
   <!-- Logout Confirmation Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content">
@@ -124,32 +128,17 @@
             </form>
         </div>
     </div>
-     <script>
-        function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
-            document.getElementById('logoutModal').style.display = 'block';
-        }
 
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').style.display = 'none';
-        }
+<script>
+    function openLogoutModal(event) {
+        event.preventDefault();
+        document.getElementById('logoutModal').style.display = 'block';
+    }
 
-        // Close modals on click outside
-        window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
-            const logoutModal = document.getElementById('logoutModal');
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+    }
 
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
-        };
-    </script>
-
-  <script>
     function openDeleteModal(instructorId, instructorName) {
       document.getElementById('instructorName').innerText = instructorName;
       document.getElementById('deleteForm').action = `/admin/instructors/delete/${instructorId}`;
@@ -161,12 +150,11 @@
     }
 
     window.onclick = function(event) {
-      const modal = document.getElementById('deleteModal');
-      if (event.target === modal) {
-        modal.style.display = "none";
-      }
+      const deleteModal = document.getElementById('deleteModal');
+      const logoutModal = document.getElementById('logoutModal');
+      if (event.target === deleteModal) deleteModal.style.display = "none";
+      if (event.target === logoutModal) logoutModal.style.display = "none";
     };
-  </script>
-
+</script>
 </body>
 </html>

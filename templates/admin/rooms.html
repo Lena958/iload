@@ -8,27 +8,23 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
 
+    <!-- Delete Modal -->
     <script>
-      function openDeleteModal(roomId, roomNumber) {
-          document.getElementById('roomName').innerText = roomNumber;
-          document.getElementById('deleteForm').action = `/admin/rooms/delete/${roomId}`;
-          document.getElementById('deleteModal').style.display = 'block';
-      }
+        function openDeleteModal(roomId, roomNumber) {
+            document.getElementById('roomName').innerText = roomNumber;
+            document.getElementById('deleteForm').action = `/admin/rooms/delete/${roomId}`;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
 
-      function closeDeleteModal() {
-          document.getElementById('deleteModal').style.display = 'none';
-      }
-
-      window.onclick = function(event) {
-          const modal = document.getElementById('deleteModal');
-          if (event.target === modal) {
-              modal.style.display = "none";
-          }
-      };
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
     </script>
+
+    <!-- Logout Modal -->
     <script>
         function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
+            event.preventDefault();
             document.getElementById('logoutModal').style.display = 'block';
         }
 
@@ -36,31 +32,26 @@
             document.getElementById('logoutModal').style.display = 'none';
         }
 
-        // Close modals on click outside
+        // Handle closing both modals on click outside
         window.onclick = function(event) {
             const deleteModal = document.getElementById('deleteModal');
             const logoutModal = document.getElementById('logoutModal');
 
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
+            if (event.target === deleteModal) deleteModal.style.display = "none";
+            if (event.target === logoutModal) logoutModal.style.display = "none";
         };
     </script>
-
 </head>
+
 <body>
+    <!-- Topbar -->
     <div class="topbar">
         <h1>College of Computing and Information Sciences</h1>
 
         <div class="topbar-profile">
             {% if instructor_image %}
             <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
-                alt="Profile Image"
-                class="profile-pic" />
+                alt="Profile Image" class="profile-pic" />
             {% else %}
             <i class="fas fa-user-circle profile-icon"></i>
             {% endif %}
@@ -74,31 +65,31 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-user">
-            <img src="{{ url_for('static', filename='images/brand.png') }}" 
-            alt="CCISS Logo" 
-            class="sidebar-logo">
+            <img src="{{ url_for('static', filename='images/brand.png') }}" alt="CCISS Logo" class="sidebar-logo">
             {% if instructor_name %}
                 <p><strong>{{ instructor_name }}</strong></p>
             {% else %}
                 <p><em>Instructor name not found</em></p>
             {% endif %}
         </div>
-            <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
-            <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
-            <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
-            <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
-            <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
-            <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
-            <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
-            <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
-        </div>
+        <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+        <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+        <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+        <a href="{{ url_for('rooms.list_rooms') }}" class="active"><i class="fas fa-door-open"></i> Rooms</a>
+        <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+        <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+        <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+        <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+    </div>
 
+    <!-- Main Content -->
     <div class="main-content">
         <div class="welcome-card">
             <h2>Admin, {{ instructor_name or 'Instructor' }}!</h2>
             <p>Here’s where you can manage room utilizations.</p>
         </div>
+
         <div class="table-tools">
             <div class="left">
                 <a href="{{ url_for('rooms.add_room') }}" class="btn">Add Room</a>
@@ -110,7 +101,6 @@
                 </div>
             </div>
         </div>
-
 
         <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -130,6 +120,7 @@
                     <tr>
                         <th>Room Number</th>
                         <th>Room Type</th>
+                        <th>Program</th>
                         <th>Image</th>
                         <th>Actions</th>
                     </tr>
@@ -139,6 +130,7 @@
                     <tr>
                         <td>{{ room.room_number }}</td>
                         <td>{{ room.room_type|capitalize }}</td>
+                        <td>{{ room.program or '—' }}</td>
                         <td>
                             {% if room.image %}
                                 <img src="{{ url_for('static', filename='room_images/' ~ room.image) }}" 
@@ -155,7 +147,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4" style="text-align:center;">No rooms found.</td>
+                        <td colspan="5" style="text-align:center;">No rooms found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -175,6 +167,7 @@
             </form>
         </div>
     </div>
+
     <!-- Logout Confirmation Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content">
@@ -188,45 +181,50 @@
         </div>
     </div>
 
-</body>
-</html>
-<script>
-    function filterRooms() {
-        const input = document.getElementById("roomSearch");
-        const filter = input.value.toLowerCase();
-        const table = document.querySelector(".table-container table");
-        const tr = table.getElementsByTagName("tr");
+    <!-- JavaScript for search and clear button -->
+    <script>
+        function filterRooms() {
+            const input = document.getElementById("roomSearch");
+            const filter = input.value.toLowerCase();
+            const table = document.querySelector(".table-container table");
+            const tr = table.getElementsByTagName("tr");
 
-        for (let i = 1; i < tr.length; i++) { // Start from 1 to skip table header
-            const tdRoomNumber = tr[i].getElementsByTagName("td")[0];
-            const tdRoomType = tr[i].getElementsByTagName("td")[1];
+            for (let i = 1; i < tr.length; i++) { // Skip header
+                const tdRoomNumber = tr[i].getElementsByTagName("td")[0];
+                const tdRoomType = tr[i].getElementsByTagName("td")[1];
+                const tdProgram = tr[i].getElementsByTagName("td")[2];
 
-            if (tdRoomNumber || tdRoomType) {
-                const roomNumberText = tdRoomNumber ? tdRoomNumber.textContent.toLowerCase() : '';
-                const roomTypeText = tdRoomType ? tdRoomType.textContent.toLowerCase() : '';
-                
-                if (roomNumberText.includes(filter) || roomTypeText.includes(filter)) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
+                if (tdRoomNumber || tdRoomType || tdProgram) {
+                    const roomNumberText = tdRoomNumber ? tdRoomNumber.textContent.toLowerCase() : '';
+                    const roomTypeText = tdRoomType ? tdRoomType.textContent.toLowerCase() : '';
+                    const programText = tdProgram ? tdProgram.textContent.toLowerCase() : '';
+
+                    if (
+                        roomNumberText.includes(filter) ||
+                        roomTypeText.includes(filter) ||
+                        programText.includes(filter)
+                    ) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
                 }
             }
         }
-    }
-</script>
-<script>
-    function clearSearch() {
-        const input = document.getElementById('roomSearch');
-        input.value = '';
-        input.focus();
-        filterRooms(); // Call your filter function to reset
-        toggleClearButton(); // Hide the clear button
-    }
 
-    function toggleClearButton() {
-        const input = document.getElementById('roomSearch');
-        const clearBtn = document.querySelector('.clear-btn');
-        clearBtn.style.display = input.value ? 'block' : 'none';
-    }
-</script>
+        function clearSearch() {
+            const input = document.getElementById('roomSearch');
+            input.value = '';
+            input.focus();
+            filterRooms();
+            toggleClearButton();
+        }
 
+        function toggleClearButton() {
+            const input = document.getElementById('roomSearch');
+            const clearBtn = document.querySelector('.clear-btn');
+            clearBtn.style.display = input.value ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

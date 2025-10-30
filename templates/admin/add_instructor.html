@@ -51,24 +51,24 @@
           <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
           <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
           <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLogoutModal()">&times;</span>
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+                <button type="submit" class="btn btn-danger">Logout</button>
+                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            </form>
         </div>
-        <!-- Logout Confirmation Modal -->
-        <div id="logoutModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeLogoutModal()">&times;</span>
-                <h3>Confirm Logout</h3>
-                <p>Are you sure you want to logout?</p>
-                <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
-                    <button type="submit" class="btn btn-danger">Logout</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
-                </form>
-            </div>
-        </div>
+    </div>
 
   <!-- Main content -->
   <main class="main-content">
     <div class="main-form">
-      
       <form method="POST">
         <h2 class="form-title">Add Instructor Here</h2>
 
@@ -79,7 +79,29 @@
         <input type="number" id="max_load_units" name="max_load_units" required>
 
         <label for="department">Department:</label>
-        <input type="text" id="department" name="department">
+        <input list="departments" id="department" name="department">
+        <datalist id="departments">
+          <option value="Computer Science">
+          <option value="Information Technology">
+          <option value="Software Engineering">
+          <option value="Information Systems">
+        </datalist>
+
+        <label for="program">Program:</label>
+        <input list="programs" id="program" name="program">
+        <datalist id="programs">
+          {% for prog in programs %}
+          <option value="{{ prog }}">
+          {% endfor %}
+        </datalist>
+
+        <label for="status">Status:</label>
+        <input list="statuses" id="status" name="status">
+        <datalist id="statuses">
+          {% for stat in statuses %}
+          <option value="{{ stat }}">
+          {% endfor %}
+        </datalist>
 
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
@@ -100,29 +122,24 @@
       </form>
     </div>
   </main>
+
+  <script>
+    function openLogoutModal(event) {
+        event.preventDefault(); 
+        document.getElementById('logoutModal').style.display = 'block';
+    }
+
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const deleteModal = document.getElementById('deleteModal');
+        const logoutModal = document.getElementById('logoutModal');
+
+        if (event.target === deleteModal) deleteModal.style.display = "none";
+        if (event.target === logoutModal) logoutModal.style.display = "none";
+    };
+  </script>
 </body>
 </html>
-<script>
-        function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
-            document.getElementById('logoutModal').style.display = 'block';
-        }
-
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').style.display = 'none';
-        }
-
-        // Close modals on click outside
-        window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
-            const logoutModal = document.getElementById('logoutModal');
-
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
-        };
-</script>

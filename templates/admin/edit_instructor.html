@@ -9,63 +9,61 @@
 </head>
 <body>
   <div class="topbar">
-        <h1>College of Computing and Information Sciences</h1>
+    <h1>College of Computing and Information Sciences</h1>
+    <div class="topbar-profile">
+      {% if instructor_image %}
+      <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
+           alt="Profile Image"
+           class="profile-pic" />
+      {% else %}
+      <i class="fas fa-user-circle profile-icon"></i>
+      {% endif %}
 
-        <div class="topbar-profile">
-            {% if instructor_image %}
-            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
-                alt="Profile Image"
-                class="profile-pic" />
-            {% else %}
-            <i class="fas fa-user-circle profile-icon"></i>
-            {% endif %}
-
-            <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
+      <a href="#" class="logout-btn" title="Logout" onclick="openLogoutModal(event)">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </a>
     </div>
+  </div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-user">
-            <img src="{{ url_for('static', filename='images/brand.png') }}" 
-            alt="CCISS Logo" 
-            class="sidebar-logo">
-            {% if instructor_name %}
-                <p><strong>{{ instructor_name }}</strong></p>
-            {% else %}
-                <p><em>Instructor name not found</em></p>
-            {% endif %}
-        </div>
-            <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
-            <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
-            <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
-            <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
-            <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
-            <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
-            <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
-            <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
-        </div>
-         <!-- Logout Confirmation Modal -->
-    <div id="logoutModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeLogoutModal()">&times;</span>
-            <h3>Confirm Logout</h3>
-            <p>Are you sure you want to logout?</p>
-            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
-                <button type="submit" class="btn btn-danger">Logout</button>
-                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
-            </form>
-        </div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-user">
+      <img src="{{ url_for('static', filename='images/brand.png') }}" 
+           alt="CCISS Logo" 
+           class="sidebar-logo">
+      {% if instructor_name %}
+          <p><strong>{{ instructor_name }}</strong></p>
+      {% else %}
+          <p><em>Instructor name not found</em></p>
+      {% endif %}
     </div>
+    <a href="{{ url_for('dashboard.admin_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+    <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
+    <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
+    <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+    <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
+    <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
+    <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
+    <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
+  </div>
 
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()">&times;</span>
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+          <button type="submit" class="btn btn-danger">Logout</button>
+          <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Main content -->
   <main class="main-content">
     <div class="main-form">
-  
       <form method="POST">
         <h2 class="form-title">Edit Instructor Here</h2>
         
@@ -76,7 +74,29 @@
         <input type="number" name="max_load_units" value="{{ instructor.max_load_units }}" required>
 
         <label>Department:</label>
-        <input type="text" name="department" value="{{ instructor.department }}">
+        <input list="departments" name="department" value="{{ instructor.department }}">
+        <datalist id="departments">
+          <option value="Computer Science">
+          <option value="Information Technology">
+          <option value="Software Engineering">
+          <option value="Information Systems">
+        </datalist>
+
+        <label>Program:</label>
+        <input list="programs" name="program" value="{{ instructor.program }}">
+        <datalist id="programs">
+          {% for prog in programs %}
+          <option value="{{ prog }}">
+          {% endfor %}
+        </datalist>
+
+        <label>Status:</label>
+        <input list="statuses" name="status" value="{{ instructor.status }}">
+        <datalist id="statuses">
+          {% for stat in statuses %}
+          <option value="{{ stat }}">
+          {% endfor %}
+        </datalist>
 
         <label>Username:</label>
         <input type="text" name="username" value="{{ instructor.username }}" required>
@@ -96,28 +116,19 @@
   </main>
 
   <script>
-        function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
-            document.getElementById('logoutModal').style.display = 'block';
-        }
+    function openLogoutModal(event) {
+        event.preventDefault();
+        document.getElementById('logoutModal').style.display = 'block';
+    }
 
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').style.display = 'none';
-        }
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+    }
 
-        // Close modals on click outside
-        window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
-            const logoutModal = document.getElementById('logoutModal');
-
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
-        };
-    </script>
+    window.onclick = function(event) {
+        const logoutModal = document.getElementById('logoutModal');
+        if (event.target === logoutModal) logoutModal.style.display = "none";
+    };
+  </script>
 </body>
 </html>

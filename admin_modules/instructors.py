@@ -17,7 +17,7 @@ def get_db_connection():
 def is_admin():
     return session.get('role') == 'admin'
 
-# Login route (you can move this elsewhere if needed)
+# Login route
 @instructors_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -34,13 +34,13 @@ def login():
             session['user_id'] = user['instructor_id']
             session['role'] = user['role']
             flash("Logged in successfully!", "success")
-            return redirect(url_for('instructors.list_instructors'))  # Change to your dashboard if needed
+            return redirect(url_for('instructors.list_instructors'))
 
         flash("Invalid username or password", "danger")
 
     return render_template('login.html')
 
-# Context processor to inject logged-in instructor's name
+# Context processor for logged-in instructor's info
 @instructors_bp.context_processor
 def inject_instructor_name():
     if 'user_id' not in session:
@@ -76,10 +76,24 @@ def add_instructor():
     if not is_admin():
         return redirect(url_for('instructors.login'))
 
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Fetch distinct programs and statuses from DB
+    cursor.execute("SELECT DISTINCT program FROM instructors WHERE program IS NOT NULL AND program != ''")
+    programs = [row['program'] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT DISTINCT status FROM instructors WHERE status IS NOT NULL AND status != ''")
+    statuses = [row['status'] for row in cursor.fetchall()]
+
+    conn.close()
+
     if request.method == 'POST':
         name = request.form['name']
         max_load_units = request.form['max_load_units']
         department = request.form['department']
+        program = request.form['program']
+        status = request.form['status']
         username = request.form['username']
         password = request.form['password']
         role = request.form['role']
@@ -90,18 +104,22 @@ def add_instructor():
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO instructors (name, max_load_units, department, username, password, role)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO instructors (name, max_load_units, department, program, status, username, password, role)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (name, max_load_units, department, username, hashed_password, role)
+            (name, max_load_units, department, program, status, username, hashed_password, role)
         )
         conn.commit()
         conn.close()
 
-        flash("Instructor added successfully")
+        flash("Instructor added successfully", "success")
         return redirect(url_for('instructors.list_instructors'))
 
-    return render_template("admin/add_instructor.html")
+    return render_template(
+        "admin/add_instructor.html",
+        programs=programs,
+        statuses=statuses
+    )
 
 # Edit instructor
 @instructors_bp.route('/edit/<int:instructor_id>', methods=['GET', 'POST'])
@@ -112,24 +130,43 @@ def edit_instructor(instructor_id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
+    # Fetch distinct programs and statuses from DB
+    cursor.execute("SELECT DISTINCT program FROM instructors WHERE program IS NOT NULL AND program != ''")
+    programs = [row['program'] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT DISTINCT status FROM instructors WHERE status IS NOT NULL AND status != ''")
+    statuses = [row['status'] for row in cursor.fetchall()]
+
     if request.method == 'POST':
         name = request.form['name']
         max_load_units = request.form['max_load_units']
         department = request.form['department']
+        program = request.form['program']
+        status = request.form['status']
 
         cursor.execute(
-            "UPDATE instructors SET name=%s, max_load_units=%s, department=%s WHERE instructor_id=%s",
-            (name, max_load_units, department, instructor_id)
+            """
+            UPDATE instructors 
+            SET name=%s, max_load_units=%s, department=%s, program=%s, status=%s
+            WHERE instructor_id=%s
+            """,
+            (name, max_load_units, department, program, status, instructor_id)
         )
         conn.commit()
         conn.close()
-        flash("Instructor updated successfully")
+        flash("Instructor updated successfully", "success")
         return redirect(url_for('instructors.list_instructors'))
 
     cursor.execute("SELECT * FROM instructors WHERE instructor_id = %s", (instructor_id,))
     instructor = cursor.fetchone()
     conn.close()
-    return render_template("admin/edit_instructor.html", instructor=instructor)
+
+    return render_template(
+        "admin/edit_instructor.html",
+        instructor=instructor,
+        programs=programs,
+        statuses=statuses
+    )
 
 # Delete instructor
 @instructors_bp.route('/delete/<int:instructor_id>', methods=['POST'])
@@ -142,5 +179,5 @@ def delete_instructor(instructor_id):
     cursor.execute("DELETE FROM instructors WHERE instructor_id = %s", (instructor_id,))
     conn.commit()
     conn.close()
-    flash("Instructor deleted successfully")
+    flash("Instructor deleted successfully", "success")
     return redirect(url_for('instructors.list_instructors'))
