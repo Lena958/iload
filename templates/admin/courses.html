@@ -79,6 +79,21 @@
             <p>Manage courses here.</p>
         </div>
 
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-container">
+              {% for category, message in messages %}
+                {% if category == 'courses_success' or category == 'danger' %}
+                  <div class="alert alert-{{ 'success' if category == 'courses_success' else 'danger' }}">
+                      {{ message }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
         <!-- Filter Container -->
         <div class="filter-container">
             <form method="POST" class="filter-form">
@@ -112,6 +127,16 @@
                     </select>
                 </div>
 
+                <div class="form-group">
+                    <label>Course Type:</label>
+                    <select name="course_type">
+                        <option value="">All Types</option>
+                        <option value="Major" {% if selected_course_type == "Major" %}selected{% endif %}>Major</option>
+                        <option value="GEC" {% if selected_course_type == "GEC" %}selected{% endif %}>GEC</option>
+                        <option value="GEE" {% if selected_course_type == "GEE" %}selected{% endif %}>GEE</option>
+                    </select>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn">Filter</button>
                     <a href="{{ url_for('courses.add_course') }}" class="btn btn-primary">Add New Course</a>
@@ -127,6 +152,7 @@
                     <tr>
                         <th>Course Code</th>
                         <th>Course Name</th>
+                        <th>Course Type</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -135,6 +161,7 @@
                         <tr>
                             <td>{{ course.course_code }}</td>
                             <td>{{ course.course_name }}</td>
+                            <td>{{ course.course_type }}</td>
                             <td>
                                 <a href="{{ url_for('courses.edit_course', course_id=course.course_id) }}" class="btn btn-secondary btn-sm">Edit</a>
                                 <button type="button" class="btn btn-danger btn-sm" 
