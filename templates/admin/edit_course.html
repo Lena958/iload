@@ -61,7 +61,7 @@
   <!-- Main Content -->
   <div class="main-content">
       <div class="main-form">
-          <form method="POST">
+          <form method="POST" action="{{ url_for('courses.edit_course', course_id=course.course_id) }}">
               <h2 class="form-title">Edit Course</h2>
 
               <label>Course Code:</label>
@@ -73,21 +73,33 @@
               <label>Program:</label>
               <input type="text" name="program" value="{{ course.program }}" required>
 
+              <label>Course Type:</label>
+              <select name="course_type" required>
+                  <option value="">--Select Type--</option>
+                  <option value="Major" {% if course.course_type == 'Major' %}selected{% endif %}>Major</option>
+                  <option value="GEC" {% if course.course_type == 'GEC' %}selected{% endif %}>GEC</option>
+                  <option value="GEE" {% if course.course_type == 'GEE' %}selected{% endif %}>GEE</option>
+              </select>
+
               <label>Semester:</label>
               <select name="semester" required>
                   <option value="">--Select Semester--</option>
-                  <option value="First Semester" {% if course.semester == "First Semester" %}selected{% endif %}>First Semester</option>
-                  <option value="Second Semester" {% if course.semester == "Second Semester" %}selected{% endif %}>Second Semester</option>
-                  <option value="Summer" {% if course.semester == "Summer" %}selected{% endif %}>Summer</option>
+                  <option value="First Semester" {% if course.semester == 'First Semester' %}selected{% endif %}>First Semester</option>
+                  <option value="Second Semester" {% if course.semester == 'Second Semester' %}selected{% endif %}>Second Semester</option>
+                  <option value="Summer" {% if course.semester == 'Summer' %}selected{% endif %}>Summer</option>
               </select>
 
               <label>School Year:</label>
-              <input type="text" name="school_year" value="{{ course.school_year }}" required>
+              <select name="school_year" required>
+                  <option value="">--Select School Year--</option>
+                  {% for year in school_years %}
+                      <option value="{{ year }}" {% if course.school_year == year %}selected{% endif %}>{{ year }}</option>
+                  {% endfor %}
+              </select>
 
-              <div class="form-actions">
-                  <button type="submit" class="btn">Update Course</button>
-                  <a href="{{ url_for('courses.list_courses') }}" class="btn btn-secondary">Cancel</a>
-              </div>
+              <div class="form-actions"></div>
+              <button type="submit" class="btn">Update Course</button>
+              <a href="{{ url_for('courses.list_courses') }}" class="btn btn-secondary">Cancel</a>
           </form>
       </div>
   </div>
