@@ -71,7 +71,20 @@
               <input type="text" name="course_name" required>
 
               <label>Program:</label>
-              <input type="text" name="program" placeholder="Enter Program" required>
+              <input list="programs" name="program" placeholder="Enter Program" required>
+              <datalist id="programs">
+                  {% for program in programs %}
+                      <option value="{{ program }}"></option>
+                  {% endfor %}
+              </datalist>
+
+              <label>Course Type:</label>
+              <select name="course_type" required>
+                  <option value="">--Select Type--</option>
+                  <option value="Major">Major</option>
+                  <option value="GEC">GEC</option>
+                  <option value="GEE">GEE</option>
+              </select>
 
               <label>Semester:</label>
               <select name="semester" required>
@@ -82,7 +95,12 @@
               </select>
 
               <label>School Year:</label>
-              <input type="text" name="school_year" value="{{ current_school_year }}" placeholder="e.g., 2025-2026" required>
+              <input list="school_years" name="school_year" placeholder="e.g., 2025-2026" required>
+              <datalist id="school_years">
+                  {% for year in school_years %}
+                      <option value="{{ year }}"></option>
+                  {% endfor %}
+              </datalist>
 
               <div class="form-actions"></div>
               <button type="submit" class="btn">Add Course</button>
