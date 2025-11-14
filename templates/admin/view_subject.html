@@ -52,19 +52,20 @@
 
     <div class="main-content">
         <div class="main-form">
-            <h2>Instructor's Subject Details</h2>
+            <h2>Instructor's Assigned Load Details</h2>
 
-            <p><strong>Subject Code:</strong> {{ subject.code }}</p>
-            <p><strong>Subject Name:</strong> {{ subject.name }}</p>
-            <p><strong>Units:</strong> {{ subject.units }}</p>
-            <p><strong>Year Level:</strong> {{ subject.year_level or "N/A" }}</p>
-            <p><strong>Section:</strong> {{ subject.section or "N/A" }}</p>
-            <p><strong>Course:</strong> {{ subject.course or "N/A" }}</p>
             <p><strong>Instructor:</strong> {{ subject.instructor_name or "Unassigned" }}</p>
+            <p><strong>Course Code:</strong> {{ subject.code }}</p>
+            <p><strong>Course Name:</strong> {{ subject.name }}</p>
+            <p><strong>Program / Year Level / Section:</strong> 
+                {{ subject.course or "N/A" }} {{ subject.year_level or "N/A" }}{{ subject.section or "N/A" }}
+            </p>
+            <p><strong>Units:</strong> {{ subject.units }}</p>
 
-            <a href="{{ url_for('subjects.list_subjects') }}" class="btn btn-secondary">Back to Subjects</a>
+            <a href="{{ url_for('subjects.list_subjects') }}" class="btn btn-secondary">Back</a>
         </div>
     </div>
+
      <!-- Logout Confirmation Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content">
@@ -77,9 +78,10 @@
             </form>
         </div>
     </div>
-     <script>
+
+    <script>
         function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
+            event.preventDefault();
             document.getElementById('logoutModal').style.display = 'block';
         }
 
@@ -89,13 +91,7 @@
 
         // Close modals on click outside
         window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
             const logoutModal = document.getElementById('logoutModal');
-
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
             if (event.target === logoutModal) {
                 logoutModal.style.display = "none";
             }

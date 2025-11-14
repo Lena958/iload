@@ -69,12 +69,12 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Subject Code</th>
-                        <th>Subject Name</th>
+                        <th>Course Code</th>
+                        <th>Course Name</th>
                         <th>Units</th>
                         <th>Year Level</th>
                         <th>Section</th>
-                        <th>Course</th>
+                        <th>Program</th>
                         <th>Instructor</th>
                         <th>Actions</th>
                     </tr>
@@ -117,9 +117,15 @@
     }
 
     window.onclick = function(event) {
-        const modal = document.getElementById('deleteModal');
-        if (event.target === modal) {
-            modal.style.display = "none";
+        const deleteModal = document.getElementById('deleteModal');
+        const logoutModal = document.getElementById('logoutModal');
+
+        if (event.target === deleteModal) {
+            deleteModal.style.display = "none";
+        }
+
+        if (event.target === logoutModal) {
+            logoutModal.style.display = "none";
         }
     };
 </script>
@@ -136,43 +142,30 @@
     </form>
   </div>
 </div>
- <!-- Logout Confirmation Modal -->
-    <div id="logoutModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeLogoutModal()">&times;</span>
-            <h3>Confirm Logout</h3>
-            <p>Are you sure you want to logout?</p>
-            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
-                <button type="submit" class="btn btn-danger">Logout</button>
-                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
-            </form>
-        </div>
+
+<!-- Logout Confirmation Modal -->
+<div id="logoutModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeLogoutModal()">&times;</span>
+        <h3>Confirm Logout</h3>
+        <p>Are you sure you want to logout?</p>
+        <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+            <button type="submit" class="btn btn-danger">Logout</button>
+            <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+        </form>
     </div>
-     <script>
-        function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
-            document.getElementById('logoutModal').style.display = 'block';
-        }
+</div>
 
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').style.display = 'none';
-        }
+<script>
+    function openLogoutModal(event) {
+        event.preventDefault();
+        document.getElementById('logoutModal').style.display = 'block';
+    }
 
-        // Close modals on click outside
-        window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
-            const logoutModal = document.getElementById('logoutModal');
-
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
-
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
-        };
-    </script>
-
+    function closeLogoutModal() {
+        document.getElementById('logoutModal').style.display = 'none';
+    }
+</script>
 
 </body>
 </html>

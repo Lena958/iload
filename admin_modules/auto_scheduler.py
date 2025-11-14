@@ -6,9 +6,14 @@ from collections import deque
 from datetime import datetime, timedelta
 from .conflicts import detect_and_save_conflicts  # ensure this exists
 
+# --- New imports for performance improvements
+from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+
 auto_scheduler_bp = Blueprint('auto_scheduler', __name__, url_prefix='/admin/auto_scheduler')
 
-# ---------- DB config (edit for your environment) ----------
+# ---------- DB config ----------
 db_config = {
     'host': 'localhost',
     'user': 'root',
@@ -21,6 +26,7 @@ def get_db_connection():
 
 def is_admin():
     return session.get('role') == 'admin'
+
 
 @auto_scheduler_bp.context_processor
 def inject_instructor_name():
@@ -37,6 +43,8 @@ def inject_instructor_name():
         instructor_name=instructor['name'] if instructor else None,
         instructor_image=instructor['image'] if instructor and instructor['image'] else None
     )
+
+
 # ---------- Patterns ----------
 PATTERNS = {
     'MWF': ['Monday', 'Wednesday', 'Friday'],
@@ -45,13 +53,6 @@ PATTERNS = {
 }
 
 def sessions_for_subject(subj):
-    """
-    Map subject units to pattern and session count.
-    units >= 3 -> MWF (3)
-    units == 2 -> TTh (2)
-    units == 1 -> OneDay (1)
-    Default: 3 -> MWF
-    """
     try:
         units = int(subj.get('units', 3))
     except Exception:
@@ -62,6 +63,7 @@ def sessions_for_subject(subj):
         return ('TTh', 2)
     else:
         return ('OneDay', 1)
+
 
 # ---------- Time helpers ----------
 def parse_time_str(t):
@@ -76,10 +78,9 @@ def parse_time_str(t):
                 continue
     return None
 
-def intervals_overlap(s1, e1, s2, e2):
-    """
-    s1,e1,s2,e2 are "HH:MM" strings
-    """
+# Memoized interval check
+@lru_cache(maxsize=None)
+def _intervals_overlap_cached(s1, e1, s2, e2):
     fmt = "%H:%M"
     a1 = datetime.strptime(s1, fmt)
     b1 = datetime.strptime(e1, fmt)
@@ -87,49 +88,70 @@ def intervals_overlap(s1, e1, s2, e2):
     b2 = datetime.strptime(e2, fmt)
     return not (b1 <= a2 or b2 <= a1)
 
-# ---------- Constraints (operate on groups) ----------
+def intervals_overlap(s1, e1, s2, e2):
+    # normalize inputs to strings like "HH:MM"
+    return _intervals_overlap_cached(s1, e1, s2, e2)
+
+
+# ---------- Conflict check ----------
+# We'll memoize group compatibility by turning groups into an immutable representation
+def _group_to_key(group):
+    # Each session becomes a tuple of stable fields. Order matters for pairwise compare, so keep list order.
+    return tuple(
+        (int(session.get('subject_id') or 0),
+         int(session.get('instructor_id') or 0),
+         int(session.get('room_id') or 0),
+         session.get('room_type') or '',
+         session.get('day_of_week') or '',
+         session.get('start_time') or '',
+         session.get('end_time') or '')
+        for session in group
+    )
+
+@lru_cache(maxsize=None)
+def _groups_compatible_cached(key_a, key_b):
+    # key_a and key_b are tuples produced by _group_to_key
+    for a in key_a:
+        for b in key_b:
+            day_a = a[4]; day_b = b[4]
+            if day_a == day_b:
+                if _intervals_overlap_cached(a[5], a[6], b[5], b[6]):
+                    # same instructor or same room at overlapping time is conflict
+                    if a[1] == b[1]:
+                        return False
+                    if a[2] == b[2]:
+                        return False
+            # additional subject-level mismatch checks (preserve original logic)
+            if a[0] == b[0]:
+                # same subject assigned to different instructor or different room or same day conflict
+                if a[1] != b[1]:
+                    return False
+                if a[2] != b[2]:
+                    return False
+                if day_a == day_b:
+                    return False
+    return True
+
 def group_conflicts(group_a, group_b):
-    """
-    group_a and group_b are lists of session dicts (each session dict contains
-    subject_id, instructor_id, room_id, day_of_week, start_time, end_time)
-    Return True if groups conflict (cannot coexist), False if they can coexist.
-    """
-    # For every pair of sessions (one from group_a, one from group_b), check conflicts
-    for a in group_a:
-        for b in group_b:
-            # If same day, check time overlap
-            if a['day_of_week'] == b['day_of_week']:
-                if intervals_overlap(a['start_time'], a['end_time'], b['start_time'], b['end_time']):
-                    # Instructor conflict
-                    if a.get('instructor_id') and b.get('instructor_id') and a['instructor_id'] == b['instructor_id']:
-                        return True
-                    # Room conflict
-                    if a.get('room_id') and b.get('room_id') and a['room_id'] == b['room_id']:
-                        return True
-            # If same subject (shouldn't compare same variable, but just in case), enforce
-            if a.get('subject_id') == b.get('subject_id'):
-                # must be same instructor and same room and days must be distinct
-                if a.get('instructor_id') != b.get('instructor_id'):
-                    return True
-                if a.get('room_id') != b.get('room_id'):
-                    return True
-                if a['day_of_week'] == b['day_of_week']:
-                    return True
-    return False
+    # Keep original semantics: return True if conflict exists
+    ka = _group_to_key(group_a)
+    kb = _group_to_key(group_b)
+    compatible = _groups_compatible_cached(ka, kb)
+    return not compatible
 
 def groups_compatible(group_a, group_b):
-    """
-    Return True if groups are compatible (no conflicts), False otherwise.
-    We invert group_conflicts for clearer naming.
-    """
     return not group_conflicts(group_a, group_b)
 
-# ---------- AC-3 / CSP helpers ----------
-def ac3(domains):
-    """
-    domains: dict var_name -> list of groups (each group = list of sessions)
-    """
-    queue = deque((xi, xj) for xi in domains for xj in domains if xi != xj)
+
+# ---------- CSP helpers ----------
+def ac3(domains, trim_large_domains=True):
+    # Build initial queue. Trim comparisons from very large domains if desired.
+    keys = list(domains.keys())
+    if trim_large_domains:
+        queue = deque((xi, xj) for xi in keys for xj in keys if xi != xj and len(domains[xi]) < 40)
+    else:
+        queue = deque((xi, xj) for xi in keys for xj in keys if xi != xj)
+
     while queue:
         xi, xj = queue.popleft()
         if revise(domains, xi, xj):
@@ -141,34 +163,35 @@ def ac3(domains):
     return True
 
 def revise(domains, xi, xj):
-    """
-    Remove values from xi that have no compatible value in xj
-    """
     revised = False
+    # domains contain lists of groups (lists of session dicts)
     to_remove = []
     for val_x in domains[xi]:
-        # val_x is a group; need at least one val_y in domains[xj] s.t. compatible
-        if not any(groups_compatible(val_x, val_y) for val_y in domains[xj]):
+        # check if there exists any val_y in domains[xj] compatible with val_x
+        found = False
+        for val_y in domains[xj]:
+            if groups_compatible(val_x, val_y):
+                found = True
+                break
+        if not found:
             to_remove.append(val_x)
     for v in to_remove:
-        domains[xi].remove(v)
-        revised = True
+        try:
+            domains[xi].remove(v)
+            revised = True
+        except ValueError:
+            # if someone else already removed it, ignore
+            pass
     return revised
 
 def forward_check(assignment, domains, var, value):
-    """
-    assignment: var -> chosen group
-    var: the var just assigned
-    value: the chosen group (list of sessions)
-    Return backup dict for restoration or False if a domain becomes empty
-    """
     backup = {}
     for other_var in domains:
         if other_var in assignment or other_var == var:
             continue
         filtered = [g for g in domains[other_var] if groups_compatible(value, g)]
         if not filtered:
-            # restore changed domains
+            # restore backups if failure
             for dv, vals in backup.items():
                 domains[dv] = vals
             return False
@@ -177,37 +200,47 @@ def forward_check(assignment, domains, var, value):
             domains[other_var] = filtered
     return backup
 
+
+# ---------- Consistency check ----------
 def is_consistent_assignment(assignment, candidate_group):
-    """
-    candidate_group must be compatible with all groups already assigned.
-    """
     for other_group in assignment.values():
         if not groups_compatible(candidate_group, other_group):
             return False
+
+    # --- Additional rule for part-time instructors (spread loads across days)
+    instr = candidate_group[0]['instructor_id']
+    if instructor_status.get(instr, '') == 'part time':
+        assigned_days = set()
+        for grp in assignment.values():
+            if grp[0]['instructor_id'] == instr:
+                assigned_days.update([s['day_of_week'] for s in grp])
+        new_days = [s['day_of_week'] for s in candidate_group]
+        all_days = assigned_days.union(new_days)
+        if len(all_days) == 1:  # all classes in one day
+            return False
     return True
+
 
 def select_unassigned_variable(domains, assignment):
     unassigned = [v for v in domains if v not in assignment]
-    # Minimum Remaining Values heuristic
+    # MRV heuristic: pick variable with smallest domain
     return min(unassigned, key=lambda v: len(domains[v]))
+
 
 def count_group_sessions(group):
     return len(group)
 
+
 def backtrack(assignment, domains, instructor_load, max_loads):
-    """
-    assignment: var -> chosen group
-    instructor_load: dict instructor_id -> used load units (sessions)
-    max_loads: dict instructor_id -> max load units
-    """
     if len(assignment) == len(domains):
         return assignment
 
     var = select_unassigned_variable(domains, assignment)
-
-    # iterate domain values (groups). randomize for variety
-    for group in domains[var]:
-        # group is a list of sessions; all sessions share same instructor by construction
+    # variable value ordering: try smaller groups first (less load), and shuffle to diversify
+    domain_vals = domains[var]
+    # sort by group size ascending to prefer smaller session-count options
+    domain_vals = sorted(domain_vals, key=count_group_sessions)
+    for group in domain_vals:
         if not group:
             continue
         instr = group[0].get('instructor_id')
@@ -218,28 +251,31 @@ def backtrack(assignment, domains, instructor_load, max_loads):
         if instructor_load.get(instr, 0) + sessions_needed > max_loads.get(instr, 0):
             continue
 
-        if is_consistent_assignment(assignment, group):
-            # assign
-            assignment[var] = group
-            instructor_load[instr] = instructor_load.get(instr, 0) + sessions_needed
+        # Early prune: check consistency before forward checking
+        if not is_consistent_assignment(assignment, group):
+            continue
 
-            backup = forward_check(assignment, domains, var, group)
-            if backup is not False:
-                result = backtrack(assignment, domains, instructor_load, max_loads)
-                if result:
-                    return result
+        assignment[var] = group
+        instructor_load[instr] = instructor_load.get(instr, 0) + sessions_needed
 
-            # backtrack
-            del assignment[var]
-            instructor_load[instr] -= sessions_needed
-            if instructor_load[instr] == 0:
-                del instructor_load[instr]
-            if backup:
-                for dv, vals in backup.items():
-                    domains[dv] = vals
+        backup = forward_check(assignment, domains, var, group)
+        if backup is not False:
+            result = backtrack(assignment, domains, instructor_load, max_loads)
+            if result:
+                return result
+
+        # rollback
+        del assignment[var]
+        instructor_load[instr] -= sessions_needed
+        if instructor_load[instr] == 0:
+            del instructor_load[instr]
+        if backup:
+            for dv, vals in backup.items():
+                domains[dv] = vals
     return None
 
-# ---------- Time-slot generator (deterministic) ----------
+
+# ---------- Time slots ----------
 def generate_time_slots_fixed(start_time_dt, end_time_dt, session_length_minutes=90, step_minutes=30):
     slots = []
     current = start_time_dt
@@ -253,7 +289,8 @@ def generate_time_slots_fixed(start_time_dt, end_time_dt, session_length_minutes
             break
     return slots
 
-# ---------- Conflicts helper ----------
+
+# ---------- Conflicts ----------
 def get_conflicting_schedule_ids():
     detect_and_save_conflicts()
     conn = get_db_connection()
@@ -270,12 +307,12 @@ def get_conflicting_schedule_ids():
             ids.add(r[1])
     return list(ids)
 
-# ---------- Routes: home & approve (same checks as before) ----------
+
+# ---------- Routes ----------
 @auto_scheduler_bp.route('/')
 def auto_scheduler_home():
     if not is_admin():
         return redirect(url_for('login'))
-
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
     query = """
@@ -309,69 +346,11 @@ def auto_scheduler_home():
     conflicting_schedule_ids = get_conflicting_schedule_ids()
     return render_template("admin/auto_scheduler.html", schedules=schedules, conflicting_schedule_ids=conflicting_schedule_ids)
 
-@auto_scheduler_bp.route('/approve/<int:schedule_id>', methods=['POST'])
-def approve_schedule(schedule_id):
-    if not is_admin():
-        return redirect(url_for('login'))
 
-    conn = get_db_connection()
-    cur = conn.cursor(dictionary=True)
-
-    cur.execute("SELECT * FROM schedules WHERE schedule_id = %s", (schedule_id,))
-    schedule = cur.fetchone()
-    if not schedule:
-        flash("❌ Schedule not found.", "danger")
-        conn.close()
-        return redirect(url_for('auto_scheduler.auto_scheduler_home'))
-
-    cur.execute("""
-        SELECT * FROM schedules 
-        WHERE schedule_id != %s AND (approved = 1 OR approved IS NULL OR approved = 0)
-    """, (schedule_id,))
-    others = cur.fetchall()
-
-    def _time_conflict(start1, end1, start2, end2):
-        fmt = "%H:%M:%S"
-        try:
-            s1 = datetime.strptime(str(start1), fmt)
-            e1 = datetime.strptime(str(end1), fmt)
-            s2 = datetime.strptime(str(start2), fmt)
-            e2 = datetime.strptime(str(end2), fmt)
-        except Exception:
-            try:
-                fmt2 = "%H:%M"
-                s1 = datetime.strptime(str(start1), fmt2)
-                e1 = datetime.strptime(str(end1), fmt2)
-                s2 = datetime.strptime(str(start2), fmt2)
-                e2 = datetime.strptime(str(end2), fmt2)
-            except Exception:
-                return False
-        return not (e1 <= s2 or e2 <= s1)
-
-    conflicts_found = []
-    for o in others:
-        if schedule['day_of_week'] != o['day_of_week']:
-            continue
-        if _time_conflict(schedule['start_time'], schedule['end_time'], o['start_time'], o['end_time']):
-            if schedule['instructor_id'] and schedule['instructor_id'] == o['instructor_id']:
-                conflicts_found.append(f"Conflict with Instructor: Schedule #{o['schedule_id']} on {o['day_of_week']}")
-            if schedule['room_id'] and schedule['room_id'] == o['room_id']:
-                conflicts_found.append(f"Conflict with Room: Schedule #{o['schedule_id']} on {o['day_of_week']}")
-
-    if conflicts_found:
-        flash("❌ Cannot approve schedule" .join(conflicts_found), "danger")
-        conn.close()
-        return redirect(url_for('auto_scheduler.auto_scheduler_home'))
-
-    cur.execute("UPDATE schedules SET approved = 1 WHERE schedule_id = %s", (schedule_id,))
-    conn.commit()
-    conn.close()
-    flash("✅ Schedule approved successfully.", "success")
-    return redirect(url_for('schedules.list_schedules'))
-
-# ---------- Core: generate route (CSP with group domains) ----------
 @auto_scheduler_bp.route('/generate', methods=['POST'])
 def generate_schedule():
+    global instructor_status
+
     if not is_admin():
         return redirect(url_for('login'))
 
@@ -394,87 +373,290 @@ def generate_schedule():
         flash("Invalid time format.", "warning")
         return redirect(url_for('auto_scheduler.auto_scheduler_home'))
 
-    # deterministic slots
-    time_slots = generate_time_slots_fixed(start_time, end_time, session_length_minutes=90, step_minutes=30)
+    # --- Generate both 60-min and 90-min slots
+    slots_60 = generate_time_slots_fixed(start_time, end_time, session_length_minutes=60, step_minutes=30)
+    slots_90 = generate_time_slots_fixed(start_time, end_time, session_length_minutes=90, step_minutes=30)
+
+    # merge and deduplicate
+    time_slots = []
+    seen = set()
+    for s, e in slots_60 + slots_90:
+        key = f"{s}-{e}"
+        if key not in seen:
+            seen.add(key)
+            time_slots.append((s, e))
+
     if not time_slots:
-        flash("No time slots available with given window and session length.", "warning")
+        flash("No time slots available.", "warning")
         return redirect(url_for('auto_scheduler.auto_scheduler_home'))
 
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
 
-    # fetch subjects that don't have approved schedules for this sem/sy
+    # --- JOIN subjects with courses to get course_type
     cur.execute("""
-        SELECT sb.subject_id, sb.name, sb.instructor_id, sb.units
+        SELECT sb.subject_id, sb.name, sb.code, sb.instructor_id, sb.units, sb.course,
+               c.course_type
         FROM subjects sb
-        LEFT JOIN schedules sc ON sb.subject_id = sc.subject_id AND sc.semester = %s AND sc.school_year = %s AND sc.approved = 1
+        LEFT JOIN courses c ON sb.code = c.course_code
+        LEFT JOIN schedules sc ON sb.subject_id = sc.subject_id 
+            AND sc.semester = %s AND sc.school_year = %s AND sc.approved = 1
         WHERE sb.instructor_id IS NOT NULL
           AND (sc.schedule_id IS NULL)
     """, (semester, school_year))
     subjects = cur.fetchall()
 
-    cur.execute("SELECT instructor_id, name, max_load_units FROM instructors")
+    cur.execute("SELECT instructor_id, name, status, max_load_units FROM instructors")
     instructors = cur.fetchall()
 
     cur.execute("SELECT room_id, room_number, room_type FROM rooms")
     rooms = cur.fetchall()
 
-    # maps and state
+    # --- Room-to-program mapping
+    cur.execute("SELECT room_id, program_name FROM room_programs")
+    room_program_rows = cur.fetchall()
+    room_programs_map = {}
+    for rp in room_program_rows:
+        rid = rp['room_id']
+        pname = (rp['program_name'] or '').strip().upper()
+        room_programs_map.setdefault(rid, []).append(pname)
+
     max_loads = {ins['instructor_id']: int(ins['max_load_units']) for ins in instructors}
+    instructor_status = {ins['instructor_id']: (str(ins.get('status', '') or '')).lower() for ins in instructors}
+
     instructor_load = {}
     domains = {}
     skipped_subjects = []
 
-    # Build domain for each subject. Each domain entry is a 'group' (list of sessions),
-    # representing the same time across pattern days for that subject.
-    for subj in subjects:
+    # map logical types to DB values
+    ROOM_TYPE_MAP = {
+        'lecture': 'Lecture',
+        'laboratory': 'Lab',
+        'lab': 'Lab'
+    }
+
+    # Control randomness for reproducibility during testing
+    try:
+        random.seed(time.time())
+    except Exception:
+        random.seed(0)
+
+    # ---------- Helper for building domain for one subject (used for parallel build) ----------
+    def build_domain_for_subject(subj):
         sid = subj['subject_id']
         instr_id = subj.get('instructor_id')
+        local_domain = []
         if not instr_id or instr_id not in max_loads:
-            skipped_subjects.append(sid)
-            continue
+            return str(sid), local_domain  # caller will detect empty domain and handle skipping
 
+        status = instructor_status.get(instr_id, '')
+        subj_program = (subj.get('course') or '').strip().upper()
+        subj_type = (subj.get('course_type') or 'major').lower()
+
+        # pattern and days
         pattern_name, n_sessions = sessions_for_subject(subj)
         days = PATTERNS.get(pattern_name, PATTERNS['MWF'])[:n_sessions]
 
-        var_name = str(sid)  # one variable per subject (not per session)
-        domains[var_name] = []
+        # --- For major subjects: build lecture groups and lab groups separately,
+        # then combine them into paired domain options (lecture+lab)
+        if subj_type == 'major':
+            lecture_candidates = []
+            lab_candidates = []
 
-        # For each room and each time slot, build the whole group (same start/end across days)
-        for room in rooms:
-            for (start, end) in time_slots:
-                # Build sessions list for the group's days
-                group = []
-                for day in days:
-                    session_entry = {
-                        'subject_id': sid,
-                        'instructor_id': instr_id,
-                        'room_id': room['room_id'],
-                        'room_type': room['room_type'],
-                        'day_of_week': day,
-                        'start_time': start,
-                        'end_time': end
-                    }
-                    group.append(session_entry)
-                domains[var_name].append(group)
+            desired_room_type = ROOM_TYPE_MAP['lecture']
+            lecture_rooms = [r for r in rooms if r['room_type'] == desired_room_type]
+            for room in lecture_rooms:
+                allowed_programs = [p.upper() for p in room_programs_map.get(room['room_id'], [])]
+                if allowed_programs and subj_program not in allowed_programs:
+                    continue
+                for (start, end) in time_slots:
+                    start_dt = datetime.strptime(start, "%H:%M")
+                    end_dt = datetime.strptime(end, "%H:%M")
+                    duration = (end_dt - start_dt).seconds / 60
+                    if not (45 <= duration <= 70):
+                        continue
+                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
+                        continue
+                    group = []
+                    for day in days:
+                        group.append({
+                            'subject_id': sid,
+                            'instructor_id': instr_id,
+                            'room_id': room['room_id'],
+                            'room_type': room['room_type'],
+                            'day_of_week': day,
+                            'start_time': start,
+                            'end_time': end
+                        })
+                    if group:
+                        lecture_candidates.append(group)
 
-        # shuffle domain to diversify search
-        random.shuffle(domains[var_name])
+            desired_room_type_lab = ROOM_TYPE_MAP['laboratory']
+            lab_rooms = [r for r in rooms if r['room_type'] == desired_room_type_lab]
+            if not lab_rooms:
+                lab_rooms = [r for r in rooms if r['room_type'] == ROOM_TYPE_MAP['lecture']]
+
+            for room in lab_rooms:
+                allowed_programs = [p.upper() for p in room_programs_map.get(room['room_id'], [])]
+                if allowed_programs and subj_program not in allowed_programs:
+                    continue
+                for (start, end) in time_slots:
+                    start_dt = datetime.strptime(start, "%H:%M")
+                    end_dt = datetime.strptime(end, "%H:%M")
+                    duration = (end_dt - start_dt).seconds / 60
+                    if not (75 <= duration <= 110):
+                        continue
+                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
+                        continue
+                    group = []
+                    for day in days:
+                        group.append({
+                            'subject_id': sid,
+                            'instructor_id': instr_id,
+                            'room_id': room['room_id'],
+                            'room_type': room['room_type'],
+                            'day_of_week': day,
+                            'start_time': start,
+                            'end_time': end
+                        })
+                    if group:
+                        lab_candidates.append(group)
+
+            # combine lecture + lab
+            for lec in lecture_candidates:
+                for lab in lab_candidates:
+                    valid_pair = True
+                    if lec[0].get('instructor_id') != lab[0].get('instructor_id'):
+                        valid_pair = False
+                    if valid_pair:
+                        for a in lec:
+                            for b in lab:
+                                if a['day_of_week'] == b['day_of_week'] and intervals_overlap(a['start_time'], a['end_time'], b['start_time'], b['end_time']):
+                                    valid_pair = False
+                                    break
+                            if not valid_pair:
+                                break
+                    if valid_pair:
+                        combined_group = lec + lab
+                        local_domain.append(combined_group)
+
+            # fallback to single-type groups if no paired options found
+            if not local_domain:
+                for lec in lecture_candidates:
+                    local_domain.append(lec)
+                for lab in lab_candidates:
+                    local_domain.append(lab)
+
+        else:
+            # Non-major: single lecture-only groups according to pattern
+            desired_room_type = ROOM_TYPE_MAP['lecture']
+            lecture_rooms = [r for r in rooms if r['room_type'] == desired_room_type]
+            for room in lecture_rooms:
+                allowed_programs = [p.upper() for p in room_programs_map.get(room['room_id'], [])]
+                if allowed_programs and subj_program not in allowed_programs:
+                    continue
+
+                for (start, end) in time_slots:
+                    start_dt = datetime.strptime(start, "%H:%M")
+                    end_dt = datetime.strptime(end, "%H:%M")
+                    duration = (end_dt - start_dt).seconds / 60
+
+                    if pattern_name == 'MWF' and not (45 <= duration <= 70):
+                        continue
+                    if pattern_name == 'TTh' and not (75 <= duration <= 110):
+                        continue
+                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
+                        continue
+
+                    group = []
+                    for day in days:
+                        group.append({
+                            'subject_id': sid,
+                            'instructor_id': instr_id,
+                            'room_id': room['room_id'],
+                            'room_type': room['room_type'],
+                            'day_of_week': day,
+                            'start_time': start,
+                            'end_time': end
+                        })
+                    if group:
+                        local_domain.append(group)
+
+        # randomize domain ordering for this subject to avoid worst-case ordering
+        random.shuffle(local_domain)
+        return str(sid), local_domain
+
+    # ---------- Parallel domain construction ----------
+    use_thread_build = True
+    start_build = time.time()
+    if use_thread_build and len(subjects) > 8:
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {executor.submit(build_domain_for_subject, subj): subj for subj in subjects}
+            for fut in as_completed(futures):
+                try:
+                    var_name, dom = fut.result()
+                    domains[var_name] = dom
+                except Exception:
+                    # on failure, fallback to sequential for that subject
+                    subj = futures[fut]
+                    var_name, dom = build_domain_for_subject(subj)
+                    domains[var_name] = dom
+    else:
+        for subj in subjects:
+            var_name, dom = build_domain_for_subject(subj)
+            domains[var_name] = dom
+    build_time = time.time() - start_build
+    print(f"[diagnostic] domain build took {build_time:.2f}s; total subjects: {len(subjects)}")
+
+    # ---------- Pre-filter domains before AC3 ----------
+    # Remove options that violate instructor max loads at single-option level
+    for var, groups in list(domains.items()):
+        filtered = []
+        for g in groups:
+            instr = g[0].get('instructor_id')
+            if instr not in max_loads:
+                continue
+            if count_group_sessions(g) > max_loads[instr]:
+                continue
+            filtered.append(g)
+        domains[var] = filtered
+
+    zero_domains = [k for k, v in domains.items() if not v]
+    domain_summary = {k: len(v) for k, v in domains.items()}
+    print("========== DOMAIN DIAGNOSTICS ==========")
+    print("DOMAIN SIZE SUMMARY:", domain_summary)
+    if zero_domains:
+        print("SUBJECTS WITH ZERO DOMAIN OPTIONS:", zero_domains)
+        try:
+            for sid in zero_domains:
+                cur.execute("SELECT subject_id, code, name, course FROM subjects WHERE subject_id = %s", (sid,))
+                print("NO-OPTIONS SUBJECT:", cur.fetchone())
+        except Exception as e:
+            print("Diagnostic DB fetch failed:", e)
+    print("========================================")
 
     if skipped_subjects:
         flash(f"Warning: Skipped subjects with missing instructor: {skipped_subjects}", "warning")
 
-    # prune domains with AC-3
-    if not ac3(domains):
-        flash("AC-3 failed: no valid schedule possible with current inputs.", "danger")
+    # Drop empty-domain subjects from domains (can't assign them)
+    domains = {k: v for k, v in domains.items() if v}
+
+    # Run AC3 with trimmed queue (faster)
+    ac3_start = time.time()
+    if not ac3(domains, trim_large_domains=True):
+        print("[diagnostic] AC3 failed - no valid schedule possible after propagation.")
+        flash("AC-3 failed: no valid schedule possible.", "danger")
         conn.close()
         return redirect(url_for('auto_scheduler.auto_scheduler_home'))
+    print(f"[diagnostic] AC3 propagation took {time.time()-ac3_start:.2f}s")
 
-    # search
+    # ---------- Run backtracking with profiling ----------
+    bt_start = time.time()
     final_assignment = backtrack({}, domains, instructor_load, max_loads)
+    exec_time = time.time() - bt_start
+    print(f"[diagnostic] backtracking took {exec_time:.2f}s")
 
     if final_assignment:
-        # remove previously generated (unapproved) schedules for these subjects this sem/sy
         subject_ids = list(final_assignment.keys())
         if subject_ids:
             fmt = ','.join(['%s'] * len(subject_ids))
@@ -484,7 +666,11 @@ def generate_schedule():
                 AND semester = %s AND school_year = %s
                 AND (approved IS NULL OR approved = 0)
             """
-            cur.execute(delete_q, tuple(subject_ids) + (semester, school_year))
+            try:
+                subject_ids_int = [int(x) for x in subject_ids]
+            except Exception:
+                subject_ids_int = subject_ids
+            cur.execute(delete_q, tuple(subject_ids_int) + (semester, school_year))
 
         insert_q = """
             INSERT INTO schedules
@@ -492,22 +678,19 @@ def generate_schedule():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         for var, group in final_assignment.items():
-            # group is list of sessions for the subject
             for s in group:
                 cur.execute(insert_q, (
-                    s['subject_id'],
-                    s['instructor_id'],
-                    s['room_id'],
-                    s['day_of_week'],
-                    s['start_time'],
-                    s['end_time'],
-                    semester,
-                    school_year
+                    s['subject_id'], s['instructor_id'], s['room_id'],
+                    s['day_of_week'], s['start_time'], s['end_time'],
+                    semester, school_year
                 ))
+
         conn.commit()
-        flash("✅ Schedule generated successfully (MWF / TTh groups with same time).", "success")
+
+        flash(f"Schedule generated successfully in {exec_time:.2f} seconds with all constraints applied.", "success")
+
     else:
-        flash("❌ Failed to generate schedule - no valid assignment found.", "danger")
+        flash("Failed to generate schedule - no valid assignment found.", "danger")
 
     conn.close()
     return redirect(url_for('auto_scheduler.auto_scheduler_home'))

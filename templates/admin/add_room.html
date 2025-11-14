@@ -45,7 +45,7 @@
     <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
     <a href="{{ url_for('instructors.list_instructors') }}"><i class="fas fa-chalkboard-teacher"></i> Instructors</a>
     <a href="{{ url_for('courses.list_courses') }}"><i class="fas fa-book"></i> Courses</a>
-    <a href="{{ url_for('rooms.list_rooms') }}"><i class="fas fa-door-open"></i> Rooms</a>
+    <a href="{{ url_for('rooms.list_rooms') }}" class="active"><i class="fas fa-door-open"></i> Rooms</a>
     <a href="{{ url_for('subjects.list_subjects') }}"><i class="fas fa-book"></i> CCISS Loader</a>
     <a href="{{ url_for('auto_scheduler.auto_scheduler_home') }}"><i class="fas fa-cogs"></i> Auto-Scheduler</a>
     <a href="{{ url_for('schedules.list_schedules') }}"><i class="fas fa-calendar-alt"></i> Schedules</a>
@@ -95,15 +95,13 @@
           <option value="Lab">Lab</option>
         </select>
 
-        <!-- ✅ Program (Dynamic Datalist) -->
+        <!-- Program (Dynamic from rooms_program) -->
         <label for="program">Program:</label>
         <input type="text" name="program" id="program" list="programList" placeholder="Select or enter program">
         <datalist id="programList">
-          {% if programs %}
-            {% for program in programs %}
-              <option value="{{ program }}">
-            {% endfor %}
-          {% endif %}
+          {% for program in programs %}
+            <option value="{{ program.program_name }}">
+          {% endfor %}
         </datalist>
 
         <!-- Room Image -->

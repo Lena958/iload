@@ -46,7 +46,8 @@ def inject_instructor_name():
         instructor_name=instructor['name'] if instructor else None,
         instructor_image=instructor['image'] if instructor and instructor['image'] else None
     )
-# List all subjects (no schedule status)
+
+# List all subjects
 @subjects_bp.route('/')
 def list_subjects():
     if not is_admin():
@@ -67,6 +68,13 @@ def add_subject():
         return redirect(url_for('login'))
 
     instructors = query_db("SELECT instructor_id, name FROM instructors")
+    courses = query_db("SELECT course_code, course_name, program FROM courses")
+    subjects = query_db("SELECT code, units, year_level, section FROM subjects")
+
+    # Fetch unique values for datalists
+    units_list = [row['units'] for row in query_db("SELECT DISTINCT units FROM subjects")]
+    year_levels_list = [row['year_level'] for row in query_db("SELECT DISTINCT year_level FROM subjects")]
+    sections_list = [row['section'] for row in query_db("SELECT DISTINCT section FROM subjects")]
 
     if request.method == 'POST':
         code = request.form['code']
@@ -85,7 +93,15 @@ def add_subject():
         flash("Subject added successfully")
         return redirect(url_for('subjects.list_subjects'))
 
-    return render_template("admin/add_subject.html", instructors=instructors)
+    return render_template(
+        "admin/add_subject.html",
+        instructors=instructors,
+        courses=courses,
+        subjects=subjects,
+        units_list=units_list,
+        year_levels_list=year_levels_list,
+        sections_list=sections_list
+    )
 
 # Edit subject
 @subjects_bp.route('/edit/<int:subject_id>', methods=['GET', 'POST'])
@@ -94,6 +110,15 @@ def edit_subject(subject_id):
         return redirect(url_for('login'))
 
     instructors = query_db("SELECT instructor_id, name FROM instructors")
+    courses = query_db("SELECT course_code, course_name, program FROM courses")
+    subjects = query_db("SELECT code, units, year_level, section FROM subjects")
+
+    # Fetch unique values for datalists
+    units_list = [row['units'] for row in query_db("SELECT DISTINCT units FROM subjects")]
+    year_levels_list = [row['year_level'] for row in query_db("SELECT DISTINCT year_level FROM subjects")]
+    sections_list = [row['section'] for row in query_db("SELECT DISTINCT section FROM subjects")]
+
+    subject = query_db("SELECT * FROM subjects WHERE subject_id = %s", (subject_id,), one=True)
 
     if request.method == 'POST':
         code = request.form['code']
@@ -113,8 +138,16 @@ def edit_subject(subject_id):
         flash("Subject updated successfully")
         return redirect(url_for('subjects.list_subjects'))
 
-    subject = query_db("SELECT * FROM subjects WHERE subject_id = %s", (subject_id,), one=True)
-    return render_template("admin/edit_subject.html", subject=subject, instructors=instructors)
+    return render_template(
+        "admin/edit_subject.html",
+        subject=subject,
+        instructors=instructors,
+        courses=courses,
+        subjects=subjects,
+        units_list=units_list,
+        year_levels_list=year_levels_list,
+        sections_list=sections_list
+    )
 
 # Delete subject
 @subjects_bp.route('/delete/<int:subject_id>', methods=['POST'])
@@ -126,7 +159,7 @@ def delete_subject(subject_id):
     flash("Subject deleted successfully")
     return redirect(url_for('subjects.list_subjects'))
 
-# View subject details (no schedule status)
+# View subject details
 @subjects_bp.route('/view/<int:subject_id>')
 def view_subject(subject_id):
     if not is_admin():

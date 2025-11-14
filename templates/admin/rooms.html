@@ -32,7 +32,6 @@
             document.getElementById('logoutModal').style.display = 'none';
         }
 
-        // Handle closing both modals on click outside
         window.onclick = function(event) {
             const deleteModal = document.getElementById('deleteModal');
             const logoutModal = document.getElementById('logoutModal');
@@ -47,11 +46,9 @@
     <!-- Topbar -->
     <div class="topbar">
         <h1>College of Computing and Information Sciences</h1>
-
         <div class="topbar-profile">
             {% if instructor_image %}
-            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}"
-                alt="Profile Image" class="profile-pic" />
+            <img src="{{ url_for('static', filename='uploads/' + instructor_image) }}" alt="Profile Image" class="profile-pic" />
             {% else %}
             <i class="fas fa-user-circle profile-icon"></i>
             {% endif %}
@@ -120,7 +117,7 @@
                     <tr>
                         <th>Room Number</th>
                         <th>Room Type</th>
-                        <th>Program</th>
+                        <th>Programs</th>
                         <th>Image</th>
                         <th>Actions</th>
                     </tr>
@@ -130,7 +127,13 @@
                     <tr>
                         <td>{{ room.room_number }}</td>
                         <td>{{ room.room_type|capitalize }}</td>
-                        <td>{{ room.program or '—' }}</td>
+                        <td>
+                            {% if room.programs %}
+                                {{ room.programs | join(', ') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td>
                             {% if room.image %}
                                 <img src="{{ url_for('static', filename='room_images/' ~ room.image) }}" 
@@ -168,7 +171,7 @@
         </div>
     </div>
 
-    <!-- Logout Confirmation Modal -->
+    <!-- Logout Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeLogoutModal()">&times;</span>
