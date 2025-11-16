@@ -115,18 +115,19 @@
                   {% endfor %}
               </datalist>
 
-              <!-- Course -->
+              <!-- Program -->
               <label for="course">Program:</label>
               <input list="course-list" name="course" id="course">
               <datalist id="course-list">
-                  {% for c in courses %}
-                      <option value="{{ c.program }}">
+                  {% for p in programs %}
+                      <option value="{{ p.program }}">
                   {% endfor %}
               </datalist>
 
+
               <!-- Instructor -->
               <label for="instructor_id">Instructor:</label>
-              <select name="instructor_id">
+              <select name="instructor_id" id="instructor_id">
                   <option value="">-- Select Instructor --</option>
                   {% for instructor in instructors %}
                       <option value="{{ instructor.instructor_id }}">{{ instructor.name }}</option>
@@ -140,8 +141,9 @@
       </div>
   </div>
 
+
+  <!-- Scripts -->
   <script>
-      // Logout modal control
       function openLogoutModal(event) {
           event.preventDefault();
           document.getElementById('logoutModal').style.display = 'block';
@@ -158,11 +160,66 @@
           }
       };
 
-      // Auto-fill units, year_level, and section when selecting a known code
-      const subjectsData = {{ subjects|tojson }};
-      const codeInput = document.getElementById('code');
 
-      codeInput.addEventListener('change', function() {
+      /* =============================
+          AUTO-FILL COURSE NAME
+         ============================= */
+
+      document.addEventListener("DOMContentLoaded", () => {
+          const codeInput = document.getElementById("code");
+          const nameInput = document.getElementById("name");
+
+          codeInput.addEventListener("input", () => {
+              const code = codeInput.value.trim();
+              if (!code) return;
+
+              fetch(`/admin/subjects/subject-info?code=${code}`)
+                  .then(res => res.json())
+                  .then(data => {
+                      if (data && data.name) {
+                          nameInput.value = data.name;
+                      }
+                  });
+          });
+      });
+
+
+      /* =============================
+          FILTER INSTRUCTORS BY PROGRAM
+         ============================= */
+
+      document.addEventListener("DOMContentLoaded", () => {
+
+          const courseInput = document.getElementById("course");
+          const instructorSelect = document.getElementById("instructor_id");
+
+          courseInput.addEventListener("input", () => {
+              const course = courseInput.value.trim();
+              if (!course) return;
+
+              fetch(`/admin/subjects/instructors-by-course?course=${course}`)
+                  .then(res => res.json())
+                  .then(data => {
+                      instructorSelect.innerHTML = "";
+                      data.forEach(inst => {
+                          const option = document.createElement("option");
+                          option.value = inst.instructor_id;
+                          option.textContent = inst.name;
+                          instructorSelect.appendChild(option);
+                      });
+                  });
+          });
+      });
+
+
+      /* =============================
+          AUTO-FILL UNITS / YEAR / SECTION
+         ============================= */
+
+      const subjectsData = {{ subjects|tojson }};
+      const codeInput2 = document.getElementById('code');
+
+      codeInput2.addEventListener('change', function() {
           const code = this.value;
           const match = subjectsData.find(s => s.code === code);
           if (match) {
@@ -176,5 +233,6 @@
           }
       });
   </script>
+
 </body>
 </html>

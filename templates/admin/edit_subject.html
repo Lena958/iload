@@ -101,18 +101,18 @@
                   {% endfor %}
               </datalist>
 
-              <!-- Course -->
+              <!-- Program -->
               <label for="course">Program:</label>
-              <input list="course-list" name="course" id="course" value="{{ subject.course }}">
+              <input list="course-list" name="course" id="course">
               <datalist id="course-list">
-                  {% for c in courses %}
-                      <option value="{{ c.program }}">
+                  {% for p in programs %}
+                      <option value="{{ p.program }}">
                   {% endfor %}
               </datalist>
 
               <!-- Instructor -->
               <label for="instructor_id">Instructor:</label>
-              <select name="instructor_id">
+              <select name="instructor_id" id="instructor_id">
                   <option value="">-- Select Instructor --</option>
                   {% for instructor in instructors %}
                   <option value="{{ instructor.instructor_id }}" 
@@ -153,6 +153,43 @@
           const logoutModal = document.getElementById('logoutModal');
           if (event.target === logoutModal) logoutModal.style.display = "none";
       };
+
+      // Auto-fill name and program based on code
+      const codeInput = document.getElementById("code");
+      const nameInput = document.getElementById("name");
+      const programInput = document.getElementById("course");
+      const instructorSelect = document.getElementById("instructor_id");
+
+      const coursesData = {{ courses|tojson }};
+      const instructorsData = {{ instructors|tojson }};
+
+      function filterInstructors(program) {
+          instructorSelect.innerHTML = '<option value="">-- Select Instructor --</option>';
+          instructorsData.forEach(inst => {
+              if (inst.program === program) {
+                  const option = document.createElement("option");
+                  option.value = inst.instructor_id;
+                  option.textContent = inst.name;
+                  instructorSelect.appendChild(option);
+              }
+          });
+      }
+
+      codeInput.addEventListener("input", () => {
+          const code = codeInput.value.trim();
+          const match = coursesData.find(c => c.course_code === code);
+          if (match) {
+              nameInput.value = match.course_name;
+              programInput.value = match.program;
+              filterInstructors(match.program);
+          }
+      });
+
+      // Filter instructors when program changes manually
+      programInput.addEventListener("input", () => {
+          const program = programInput.value.trim();
+          if (program) filterInstructors(program);
+      });
   </script>
 </body>
 </html>

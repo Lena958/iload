@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 import mysql.connector
 
 subjects_bp = Blueprint('subjects', __name__, url_prefix='/admin/subjects')
@@ -30,7 +30,7 @@ def query_db(query, args=(), one=False, dictionary=True):
 def is_admin():
     return session.get('role') == 'admin'
 
-# Context processor to inject instructor name
+# Inject instructor name
 @subjects_bp.context_processor
 def inject_instructor_name():
     if 'user_id' not in session:
@@ -47,7 +47,39 @@ def inject_instructor_name():
         instructor_image=instructor['image'] if instructor and instructor['image'] else None
     )
 
-# List all subjects
+# -----------------------------
+# AJAX ENDPOINTS
+# -----------------------------
+
+# Auto-fill subject name based on code
+@subjects_bp.route('/subject-info')
+def subject_info():
+    code = request.args.get('code')
+    if not code:
+        return jsonify({})
+    subject = query_db("SELECT name FROM subjects WHERE code = %s", (code,), one=True)
+    return jsonify(subject if subject else {})
+
+# Filter instructors based on course/program
+@subjects_bp.route('/instructors-by-course')
+def instructors_by_course():
+    course = request.args.get('course')
+    if not course:
+        return jsonify([])
+
+    instructors = query_db("""
+        SELECT instructor_id, name
+        FROM instructors
+        WHERE program = %s
+    """, (course,))
+    
+    return jsonify(instructors)
+
+# -----------------------------
+# SUBJECT CRUD
+# -----------------------------
+
+# List subjects
 @subjects_bp.route('/')
 def list_subjects():
     if not is_admin():
@@ -68,10 +100,18 @@ def add_subject():
         return redirect(url_for('login'))
 
     instructors = query_db("SELECT instructor_id, name FROM instructors")
-    courses = query_db("SELECT course_code, course_name, program FROM courses")
+    courses = query_db("SELECT DISTINCT course_code, course_name, program FROM courses")
     subjects = query_db("SELECT code, units, year_level, section FROM subjects")
 
-    # Fetch unique values for datalists
+    # Unique programs for course input
+    programs_raw = query_db("SELECT program FROM courses")
+    seen = set()
+    programs = []
+    for row in programs_raw:
+        if row['program'] not in seen:
+            programs.append({'program': row['program']})
+            seen.add(row['program'])
+
     units_list = [row['units'] for row in query_db("SELECT DISTINCT units FROM subjects")]
     year_levels_list = [row['year_level'] for row in query_db("SELECT DISTINCT year_level FROM subjects")]
     sections_list = [row['section'] for row in query_db("SELECT DISTINCT section FROM subjects")]
@@ -97,23 +137,34 @@ def add_subject():
         "admin/add_subject.html",
         instructors=instructors,
         courses=courses,
+        programs=programs,       # pass unique programs
         subjects=subjects,
         units_list=units_list,
         year_levels_list=year_levels_list,
         sections_list=sections_list
     )
 
-# Edit subject
 @subjects_bp.route('/edit/<int:subject_id>', methods=['GET', 'POST'])
 def edit_subject(subject_id):
     if not is_admin():
         return redirect(url_for('login'))
 
-    instructors = query_db("SELECT instructor_id, name FROM instructors")
-    courses = query_db("SELECT course_code, course_name, program FROM courses")
-    subjects = query_db("SELECT code, units, year_level, section FROM subjects")
+    # Get all instructors
+    instructors = query_db("SELECT instructor_id, name, program FROM instructors")
+    
+    # Get distinct courses for code/name/program selection
+    courses = query_db("SELECT DISTINCT course_code, course_name, program FROM courses")
+    
+    # Get unique programs
+    programs_raw = query_db("SELECT program FROM courses")
+    seen = set()
+    programs = []
+    for row in programs_raw:
+        if row['program'] not in seen:
+            programs.append({'program': row['program']})
+            seen.add(row['program'])
 
-    # Fetch unique values for datalists
+    # Get distinct units, year_levels, sections
     units_list = [row['units'] for row in query_db("SELECT DISTINCT units FROM subjects")]
     year_levels_list = [row['year_level'] for row in query_db("SELECT DISTINCT year_level FROM subjects")]
     sections_list = [row['section'] for row in query_db("SELECT DISTINCT section FROM subjects")]
@@ -143,7 +194,7 @@ def edit_subject(subject_id):
         subject=subject,
         instructors=instructors,
         courses=courses,
-        subjects=subjects,
+        programs=programs,
         units_list=units_list,
         year_levels_list=year_levels_list,
         sections_list=sections_list
@@ -159,7 +210,7 @@ def delete_subject(subject_id):
     flash("Subject deleted successfully")
     return redirect(url_for('subjects.list_subjects'))
 
-# View subject details
+# View subject
 @subjects_bp.route('/view/<int:subject_id>')
 def view_subject(subject_id):
     if not is_admin():
