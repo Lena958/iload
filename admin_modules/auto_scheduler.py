@@ -475,8 +475,18 @@ def generate_schedule():
                     duration = (end_dt - start_dt).seconds / 60
                     if not (45 <= duration <= 70):
                         continue
-                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
-                        continue
+                    # Permanent instructor rules
+                    if status == 'permanent':
+                        # skip noon break
+                        if intervals_overlap(start, end, "12:00", "13:00"):
+                            continue
+
+                        # schedule only between 08:00 and 17:00
+                        earliest = datetime.strptime("08:00", "%H:%M")
+                        latest = datetime.strptime("17:00", "%H:%M")
+                        if start_dt < earliest or end_dt > latest:
+                            continue
+
                     group = []
                     for day in days:
                         group.append({
@@ -506,8 +516,17 @@ def generate_schedule():
                     duration = (end_dt - start_dt).seconds / 60
                     if not (75 <= duration <= 110):
                         continue
-                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
-                        continue
+                    # Permanent instructor rules
+                    if status == 'permanent':
+                        # skip noon break
+                        if intervals_overlap(start, end, "12:00", "13:00"):
+                            continue
+
+                        # schedule only between 08:00 and 17:00
+                        earliest = datetime.strptime("08:00", "%H:%M")
+                        latest = datetime.strptime("17:00", "%H:%M")
+                        if start_dt < earliest or end_dt > latest:
+                            continue
                     group = []
                     for day in days:
                         group.append({
@@ -565,8 +584,17 @@ def generate_schedule():
                         continue
                     if pattern_name == 'TTh' and not (75 <= duration <= 110):
                         continue
-                    if status == 'permanent' and intervals_overlap(start, end, "12:00", "13:00"):
-                        continue
+                    # Permanent instructor rules
+                    if status == 'permanent':
+                        # skip noon break
+                        if intervals_overlap(start, end, "12:00", "13:00"):
+                            continue
+
+                        # schedule only between 08:00 and 17:00
+                        earliest = datetime.strptime("08:00", "%H:%M")
+                        latest = datetime.strptime("17:00", "%H:%M")
+                        if start_dt < earliest or end_dt > latest:
+                            continue
 
                     group = []
                     for day in days:
