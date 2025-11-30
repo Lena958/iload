@@ -7,6 +7,45 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/subjects.css') }}" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+    <style>
+        /* Additional styles for grouped table */
+        .instructor-group {
+            background-color: #f8fafc;
+        }
+        
+        .instructor-name {
+            font-weight: 600;
+            background-color: #e8f0fe;
+            vertical-align: top;
+        }
+        
+        .program-cell {
+            font-weight: 500;
+            vertical-align: top;
+        }
+        
+        /* Ensure proper table borders */
+        table {
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+        }
+        
+        /* Action buttons styling */
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+    </style>
 </head>
 <body>
      <div class="topbar">
@@ -69,37 +108,133 @@
             <table>
                 <thead>
                     <tr>
+                        <th>Instructor</th>
+                        <th>Program</th>
                         <th>Course Code</th>
                         <th>Course Name</th>
                         <th>Units</th>
                         <th>Year Level</th>
                         <th>Section</th>
-                        <th>Program</th>
-                        <th>Instructor</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for subject in subjects %}
-                    <tr>
-                        <td>{{ subject.code }}</td>
-                        <td>{{ subject.name }}</td>
-                        <td>{{ subject.units }}</td>
-                        <td>{{ subject.year_level }}</td>
-                        <td>{{ subject.section }}</td>
-                        <td>{{ subject.course or "N/A" }}</td>
-                        <td>{{ subject.instructor_name or "Unassigned" }}</td>
-                        <td>
-                            <a href="{{ url_for('subjects.edit_subject', subject_id=subject.subject_id) }}" class="btn btn-small">Edit</a>
-                            <button type="button" class="btn btn-danger btn-small" onclick="openDeleteModal('{{ subject.subject_id }}', '{{ subject.name }}')">Delete</button>
-                            <a href="{{ url_for('subjects.view_subject', subject_id=subject.subject_id) }}" class="btn btn-secondary btn-small">View</a>
-                        </td>
-                    </tr>
+                    {% if subjects %}
+                        {# Group subjects by instructor #}
+                        {% set instructors = {} %}
+                        {% for subject in subjects %}
+                            {% set instructor_key = subject.instructor_name or "Unassigned" %}
+                            {% if instructor_key not in instructors %}
+                                {% set _ = instructors.update({instructor_key: []}) %}
+                            {% endif %}
+                            {% set _ = instructors[instructor_key].append(subject) %}
+                        {% endfor %}
+                        
+                        {# Display each instructor's subjects #}
+                        {% for instructor_name, instructor_subjects in instructors.items() %}
+                            {# First, group subjects by program for this instructor #}
+                            {% set program_groups = {} %}
+                            {% for subject in instructor_subjects %}
+                                {% set program_key = subject.course or "N/A" %}
+                                {% if program_key not in program_groups %}
+                                    {% set _ = program_groups.update({program_key: []}) %}
+                                {% endif %}
+                                {% set _ = program_groups[program_key].append(subject) %}
+                            {% endfor %}
+                            
+                            {# Calculate total number of rows needed for this instructor #}
+                            {% set total_rows = instructor_subjects|length %}
+                            
+                            {# Display first program's subjects #}
+                            {% set first_program = instructor_subjects[0].course or "N/A" %}
+                            {% set first_program_subjects = program_groups[first_program] %}
+                            {% set first_program_rowspan = first_program_subjects|length %}
+                            
+                            {# First row - show instructor and first program #}
+                            <tr class="instructor-group">
+                                <td rowspan="{{ total_rows }}" class="instructor-name">{{ instructor_name }}</td>
+                                <td rowspan="{{ first_program_rowspan }}" class="program-cell">{{ first_program }}</td>
+                                <td>{{ instructor_subjects[0].code }}</td>
+                                <td>{{ instructor_subjects[0].name }}</td>
+                                <td>{{ instructor_subjects[0].units }}</td>
+                                <td>{{ instructor_subjects[0].year_level }}</td>
+                                <td>{{ instructor_subjects[0].section }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{{ url_for('subjects.edit_subject', subject_id=instructor_subjects[0].subject_id) }}" class="btn btn-small">Edit</a>
+                                        <button type="button" class="btn btn-danger btn-small" onclick="openDeleteModal('{{ instructor_subjects[0].subject_id }}', '{{ instructor_subjects[0].name }}')">Delete</button>
+                                        
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            {# Remaining rows for the first program #}
+                            {% for i in range(1, first_program_subjects|length) %}
+                                {% set subject = first_program_subjects[i] %}
+                                <tr>
+                                    <td>{{ subject.code }}</td>
+                                    <td>{{ subject.name }}</td>
+                                    <td>{{ subject.units }}</td>
+                                    <td>{{ subject.year_level }}</td>
+                                    <td>{{ subject.section }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{{ url_for('subjects.edit_subject', subject_id=subject.subject_id) }}" class="btn btn-small">Edit</a>
+                                            <button type="button" class="btn btn-danger btn-small" onclick="openDeleteModal('{{ subject.subject_id }}', '{{ subject.name }}')">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            
+                            {# Now display subjects for remaining programs #}
+                            {% set displayed_programs = [first_program] %}
+                            
+                            {% for program, program_subjects in program_groups.items() %}
+                                {% if program not in displayed_programs %}
+                                    {# First row for this program - show program with rowspan #}
+                                    <tr>
+                                        <td rowspan="{{ program_subjects|length }}" class="program-cell">{{ program }}</td>
+                                        <td>{{ program_subjects[0].code }}</td>
+                                        <td>{{ program_subjects[0].name }}</td>
+                                        <td>{{ program_subjects[0].units }}</td>
+                                        <td>{{ program_subjects[0].year_level }}</td>
+                                        <td>{{ program_subjects[0].section }}</td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="{{ url_for('subjects.edit_subject', subject_id=program_subjects[0].subject_id) }}" class="btn btn-small">Edit</a>
+                                                <button type="button" class="btn btn-danger btn-small" onclick="openDeleteModal('{{ program_subjects[0].subject_id }}', '{{ program_subjects[0].name }}')">Delete</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    
+                                    {# Remaining rows for this program #}
+                                    {% for i in range(1, program_subjects|length) %}
+                                        {% set subject = program_subjects[i] %}
+                                        <tr>
+                                            <td>{{ subject.code }}</td>
+                                            <td>{{ subject.name }}</td>
+                                            <td>{{ subject.units }}</td>
+                                            <td>{{ subject.year_level }}</td>
+                                            <td>{{ subject.section }}</td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <a href="{{ url_for('subjects.edit_subject', subject_id=subject.subject_id) }}" class="btn btn-small">Edit</a>
+                                                    <button type="button" class="btn btn-danger btn-small" onclick="openDeleteModal('{{ subject.subject_id }}', '{{ subject.name }}')">Delete</button>
+                                                    <a href="{{ url_for('subjects.view_subject', subject_id=subject.subject_id) }}" class="btn btn-secondary btn-small">View</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    
+                                    {% set _ = displayed_programs.append(program) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
                     {% else %}
-                    <tr>
-                        <td colspan="8" style="text-align:center;">No subjects found.</td>
-                    </tr>
-                    {% endfor %}
+                        <tr>
+                            <td colspan="8" style="text-align:center;">No subjects found.</td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>

@@ -35,16 +35,15 @@ body {
     padding: 60px 45px;
     border-radius: 20px;
     backdrop-filter: blur(20px);
-    background: rgba(260, 260, 255, 0.3); /* light translucent background */
+    background: rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    color: #03045E; /* deep blue */
+    color: #03045E;
     width: 100%;
     max-width: 540px;
     text-align: center;
     margin-left: 200px;
     font-size: 1.1rem;
-
-    min-height: 500px; /* make it taller */
+    min-height: 500px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -57,7 +56,6 @@ body {
     margin-left: auto;
     margin-right: auto;
 }
-
 
 /* Welcome text */
 .login-container .welcome-text {
@@ -94,7 +92,7 @@ body {
     padding: 18px 20px 18px 50px;
     border: none;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.2); /* light input background */
+    background: rgba(255, 255, 255, 0.2);
     color: #03045E;
     font-size: 1.1rem;
     outline: none;
@@ -135,7 +133,6 @@ body {
 
 /* Login button */
 .login-button {
-    
     background-color: #03045E;
     color: #cAf0f8;
     box-shadow: 0 4px 10px rgba(0, 119, 182, 0.3);
@@ -151,7 +148,7 @@ body {
     background-color: rgba(0, 119, 182, 0.2);
     color: #03045E;
     text-align: center;
-    text-decoration: none; /* removes underline */
+    text-decoration: none;
 }
 
 .back-button:hover {
@@ -159,12 +156,37 @@ body {
 }
 
 /* Responsive design */
+@media screen and (max-width: 1024px) {
+    .login-container {
+        margin-left: 100px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .login-container {
+        margin-left: 50px;
+        max-width: 90%;
+    }
+    
+    /* Hide background image on tablets and smaller */
+    .background-image {
+        display: none;
+    }
+    
+    /* Adjust login container background for better contrast on solid yellow */
+    .login-container {
+        background: rgba(255, 255, 255, 0.25);
+    }
+}
+
 @media screen and (max-width: 480px) {
     .login-container {
         margin-left: 0;
         padding: 40px 25px;
         max-width: 100%;
-        min-height: 100vh; /* expand full height on small screens */
+        min-height: 100vh;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.3);
     }
 
     .login-container h2 {
@@ -189,5 +211,14 @@ body {
     .input-group i {
         font-size: 1rem;
         left: 15px;
+    }
+    
+    body {
+        padding: 15px;
+    }
+    
+    /* Ensure solid yellow background on mobile */
+    .background-image {
+        display: none;
     }
 }

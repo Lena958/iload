@@ -1,7 +1,7 @@
 # ==================================================
 # 1. Imports
 # ==================================================
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, make_response
 import mysql.connector
 from datetime import datetime
 
@@ -207,3 +207,30 @@ def edit_course(course_id):
         return redirect(url_for('courses.list_courses'))
 
     return render_template('admin/edit_course.html', **context)
+
+# ---------- Delete Course ----------
+@courses_bp.route('/delete/<int:course_id>', methods=['POST'])
+def delete_course(course_id):
+    if not is_admin():
+        return redirect(url_for('login'))
+
+    course = get_course_by_id(course_id)
+    if not course:
+        flash("⚠️ Course not found.", "danger")
+        return redirect(url_for('courses.list_courses'))
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM courses WHERE course_id = %s", (course_id,))
+        conn.commit()
+        conn.close()
+
+        flash("🗑️ Course deleted successfully.", "success")
+    except Exception as e:
+        flash(f"❌ Error deleting course: {e}", "danger")
+
+    return redirect(url_for('courses.list_courses'))
+
+
+

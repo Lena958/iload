@@ -131,16 +131,26 @@ def admin_dashboard():
         """)
         top_instructors = cursor.fetchall()
 
-        # Add 2 subjects per instructor for display
+       # Top 5 instructors by load utilization
+        cursor.execute("""
+            SELECT i.instructor_id, i.name, i.image, i.max_load_units,
+                IFNULL(SUM(sb.units), 0) AS current_units
+            FROM instructors i
+            LEFT JOIN subjects sb ON i.instructor_id = sb.instructor_id
+            GROUP BY i.instructor_id
+            ORDER BY current_units DESC
+            LIMIT 4
+        """)
+        top_instructors = cursor.fetchall()
+
+        # Fetch all subjects per instructor
         for ti in top_instructors:
             cursor.execute("""
                 SELECT name
                 FROM subjects
                 WHERE instructor_id = %s
-                LIMIT 2
             """, (ti["instructor_id"],))
             ti["subjects"] = [row["name"] for row in cursor.fetchall()]
-
     except mysql.connector.Error as err:
         print(f"DB Error (dashboard): {err}")
 

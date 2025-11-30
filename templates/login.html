@@ -1,46 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Meta Information Section -->
     <meta charset="UTF-8">
     <title>Login Page</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- External Resources Section -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Internal Resources Section -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-   
 </head>
 <body>
-
-    <!-- Background image -->
+    <!-- Visual Elements Section -->
     <div class="background-image"></div>
-
-    <!-- Login Form -->
+    
+    <!-- Main Content Section -->
     <div class="login-container">
-        <!-- Brand image -->
+        <!-- Brand Identity Section -->
         <img src="{{ url_for('static', filename='images/brand.png') }}" alt="Brand Logo" class="brand-logo">
-        
-        <!-- Welcome message -->
         <div class="welcome-text">Welcome, please use the log in credentials provided by your admin.</div>
         
-        <!-- Form -->
+        <!-- Authentication Form Section -->
         <form method="POST">
+            <!-- Username Input -->
             <div class="input-group">
                 <i class="fas fa-user"></i>
                 <input type="text" name="username" placeholder="Username" required>
             </div>
+            
+            <!-- Password Input -->
             <div class="input-group">
                 <i class="fas fa-lock"></i>
                 <input type="password" name="password" placeholder="Password" required>
             </div>
-
-            <!-- Button row -->
+            
+            <!-- Action Buttons Section -->
             <div class="button-row">
                 <button type="submit" class="login-button">Login</button>
                 <a href="{{ url_for('home') }}" class="back-button">Return Home</a>
             </div>
         </form>
     </div>
-
 </body>
 </html>

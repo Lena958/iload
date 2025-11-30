@@ -16,6 +16,32 @@
             border: 1px solid #aaa !important;
             pointer-events: none;
         }
+        
+        /* Additional styles for grouped table */
+        .instructor-group {
+            background-color: #f8fafc;
+        }
+        
+        .instructor-name {
+            font-weight: 600;
+            background-color: #e8f0fe;
+            vertical-align: top;
+        }
+        
+        .day-cell {
+            font-weight: 500;
+            vertical-align: top;
+        }
+        
+        /* Ensure proper table borders */
+        table {
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+        }
     </style>
     <script>
         // Delete modal functions
@@ -114,56 +140,201 @@
             <table>
                 <thead>
                     <tr>
+                        <th scope="col">Instructor</th>
                         <th scope="col">Day</th>
                         <th scope="col">Time</th>
                         <th scope="col">Subject</th>
                         <th scope="col">Year & Section</th>
                         <th scope="col">Course</th>
-                        <th scope="col">Instructor</th>
                         <th scope="col">Room</th>
                         <th scope="col">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for sched in schedules %}
-                    <tr>
-                        <td>{{ sched.day_of_week }}</td>
-                        <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
-                        <td>{{ sched.subject_name }}</td>
-                        <td>{{ sched.year_level }} - {{ sched.section }}</td>
-                        <td>{{ sched.course }}</td>
-                        <td>{{ sched.instructor_name }}</td>
-                        <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
-                        <td>
-                            <a href="{{ url_for('schedules.edit_schedule', schedule_id=sched.schedule_id) }}" class="btn btn-small no-underline">Edit</a>
-
-                            {% if conflicting_schedule_ids and sched.schedule_id in conflicting_schedule_ids %}
-                                <!-- Disabled Approve button if conflict -->
-                                <button 
-                                    class="btn btn-small btn-success btn-disabled no-underline" 
-                                    title="Cannot approve this schedule due to conflicts"
-                                    disabled
-                                >
-                                    Approve
-                                </button>
-                            {% else %}
-                                <!-- Enabled Approve button -->
-                                <button 
-                                    class="btn btn-small btn-success no-underline" 
-                                    onclick="openApproveModal('{{ sched.schedule_id }}')"
-                                >
-                                    Approve
-                                </button>
+                    {% if schedules %}
+                        {# Group schedules by instructor #}
+                        {% set instructors = {} %}
+                        {% for sched in schedules %}
+                            {% if sched.instructor_name not in instructors %}
+                                {% set _ = instructors.update({sched.instructor_name: []}) %}
                             {% endif %}
+                            {% set _ = instructors[sched.instructor_name].append(sched) %}
+                        {% endfor %}
+                        
+                        {# Display each instructor's schedules #}
+                        {% for instructor_name, instructor_schedules in instructors.items() %}
+                            {# First, group schedules by day for this instructor #}
+                            {% set day_groups = {} %}
+                            {% for sched in instructor_schedules %}
+                                {% if sched.day_of_week not in day_groups %}
+                                    {% set _ = day_groups.update({sched.day_of_week: []}) %}
+                                {% endif %}
+                                {% set _ = day_groups[sched.day_of_week].append(sched) %}
+                            {% endfor %}
+                            
+                            {# Calculate total number of rows needed for this instructor #}
+                            {% set total_rows = instructor_schedules|length %}
+                            
+                            {# Display first day's schedules #}
+                            {% set first_day = instructor_schedules[0].day_of_week %}
+                            {% set first_day_schedules = day_groups[first_day] %}
+                            {% set first_day_rowspan = first_day_schedules|length %}
+                            
+                            {# First row - show instructor and first day #}
+                            <tr class="instructor-group">
+                                <td rowspan="{{ total_rows }}" class="instructor-name">{{ instructor_name }}</td>
+                                <td rowspan="{{ first_day_rowspan }}" class="day-cell">{{ first_day }}</td>
+                                <td>{{ instructor_schedules[0].start_time_12 }} - {{ instructor_schedules[0].end_time_12 }}</td>
+                                <td>{{ instructor_schedules[0].subject_name }}</td>
+                                <td>{{ instructor_schedules[0].year_level }}-{{ instructor_schedules[0].section }}</td>
+                                <td>{{ instructor_schedules[0].course }}</td>
+                                <td>{{ instructor_schedules[0].room_number }} ({{ instructor_schedules[0].room_type|capitalize }})</td>
+                                <td>
+                                    <a href="{{ url_for('schedules.edit_schedule', schedule_id=instructor_schedules[0].schedule_id) }}" class="btn btn-small no-underline">Edit</a>
 
-                            <button class="btn btn-small btn-danger no-underline" onclick="openDeleteModal('{{ sched.schedule_id }}')">Delete</button>
-                        </td>
-                    </tr>
+                                    {% if conflicting_schedule_ids and instructor_schedules[0].schedule_id in conflicting_schedule_ids %}
+                                        <!-- Disabled Approve button if conflict -->
+                                        <button 
+                                            class="btn btn-small btn-success btn-disabled no-underline" 
+                                            title="Cannot approve this schedule due to conflicts"
+                                            disabled
+                                        >
+                                            Approve
+                                        </button>
+                                    {% else %}
+                                        <!-- Enabled Approve button -->
+                                        <button 
+                                            class="btn btn-small btn-success no-underline" 
+                                            onclick="openApproveModal('{{ instructor_schedules[0].schedule_id }}')"
+                                        >
+                                            Approve
+                                        </button>
+                                    {% endif %}
+
+                                    <button class="btn btn-small btn-danger no-underline" onclick="openDeleteModal('{{ instructor_schedules[0].schedule_id }}')">Delete</button>
+                                </td>
+                            </tr>
+                            
+                            {# Remaining rows for the first day #}
+                            {% for i in range(1, first_day_schedules|length) %}
+                                {% set sched = first_day_schedules[i] %}
+                                <tr>
+                                    <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                                    <td>{{ sched.subject_name }}</td>
+                                    <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                                    <td>{{ sched.course }}</td>
+                                    <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                                    <td>
+                                        <a href="{{ url_for('schedules.edit_schedule', schedule_id=sched.schedule_id) }}" class="btn btn-small no-underline">Edit</a>
+
+                                        {% if conflicting_schedule_ids and sched.schedule_id in conflicting_schedule_ids %}
+                                            <!-- Disabled Approve button if conflict -->
+                                            <button 
+                                                class="btn btn-small btn-success btn-disabled no-underline" 
+                                                title="Cannot approve this schedule due to conflicts"
+                                                disabled
+                                            >
+                                                Approve
+                                            </button>
+                                        {% else %}
+                                            <!-- Enabled Approve button -->
+                                            <button 
+                                                class="btn btn-small btn-success no-underline" 
+                                                onclick="openApproveModal('{{ sched.schedule_id }}')"
+                                            >
+                                                Approve
+                                            </button>
+                                        {% endif %}
+
+                                        <button class="btn btn-small btn-danger no-underline" onclick="openDeleteModal('{{ sched.schedule_id }}')">Delete</button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            
+                            {# Now display schedules for remaining days #}
+                            {% set displayed_days = [first_day] %}
+                            
+                            {% for day, day_schedules in day_groups.items() %}
+                                {% if day not in displayed_days %}
+                                    {# First row for this day - show day with rowspan #}
+                                    <tr>
+                                        <td rowspan="{{ day_schedules|length }}" class="day-cell">{{ day }}</td>
+                                        <td>{{ day_schedules[0].start_time_12 }} - {{ day_schedules[0].end_time_12 }}</td>
+                                        <td>{{ day_schedules[0].subject_name }}</td>
+                                        <td>{{ day_schedules[0].year_level }}-{{ day_schedules[0].section }}</td>
+                                        <td>{{ day_schedules[0].course }}</td>
+                                        <td>{{ day_schedules[0].room_number }} ({{ day_schedules[0].room_type|capitalize }})</td>
+                                        <td>
+                                            <a href="{{ url_for('schedules.edit_schedule', schedule_id=day_schedules[0].schedule_id) }}" class="btn btn-small no-underline">Edit</a>
+
+                                            {% if conflicting_schedule_ids and day_schedules[0].schedule_id in conflicting_schedule_ids %}
+                                                <!-- Disabled Approve button if conflict -->
+                                                <button 
+                                                    class="btn btn-small btn-success btn-disabled no-underline" 
+                                                    title="Cannot approve this schedule due to conflicts"
+                                                    disabled
+                                                >
+                                                    Approve
+                                                </button>
+                                            {% else %}
+                                                <!-- Enabled Approve button -->
+                                                <button 
+                                                    class="btn btn-small btn-success no-underline" 
+                                                    onclick="openApproveModal('{{ day_schedules[0].schedule_id }}')"
+                                                >
+                                                    Approve
+                                                </button>
+                                            {% endif %}
+
+                                            <button class="btn btn-small btn-danger no-underline" onclick="openDeleteModal('{{ day_schedules[0].schedule_id }}')">Delete</button>
+                                        </td>
+                                    </tr>
+                                    
+                                    {# Remaining rows for this day #}
+                                    {% for i in range(1, day_schedules|length) %}
+                                        {% set sched = day_schedules[i] %}
+                                        <tr>
+                                            <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                                            <td>{{ sched.subject_name }}</td>
+                                            <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                                            <td>{{ sched.course }}</td>
+                                            <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                                            <td>
+                                                <a href="{{ url_for('schedules.edit_schedule', schedule_id=sched.schedule_id) }}" class="btn btn-small no-underline">Edit</a>
+
+                                                {% if conflicting_schedule_ids and sched.schedule_id in conflicting_schedule_ids %}
+                                                    <!-- Disabled Approve button if conflict -->
+                                                    <button 
+                                                        class="btn btn-small btn-success btn-disabled no-underline" 
+                                                        title="Cannot approve this schedule due to conflicts"
+                                                        disabled
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                {% else %}
+                                                    <!-- Enabled Approve button -->
+                                                    <button 
+                                                        class="btn btn-small btn-success no-underline" 
+                                                        onclick="openApproveModal('{{ sched.schedule_id }}')"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                {% endif %}
+
+                                                <button class="btn btn-small btn-danger no-underline" onclick="openDeleteModal('{{ sched.schedule_id }}')">Delete</button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    
+                                    {% set _ = displayed_days.append(day) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
                     {% else %}
-                    <tr>
-                        <td colspan="12" style="text-align:center;">No schedules found.</td>
-                    </tr>
-                    {% endfor %}
+                        <tr>
+                            <td colspan="8" style="text-align:center;">No schedules found.</td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>

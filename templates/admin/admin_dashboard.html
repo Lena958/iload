@@ -10,9 +10,146 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
 
   <!-- FontAwesome for sidebar icons -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    /* Enhanced card styles */
+    .stat-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .chart-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+    }
+    
+    .chart-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .instructor-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+    
+    .instructor-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .conflicts-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+    }
+    
+    .conflicts-card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .conflict-item {
+      transition: all 0.2s ease;
+    }
+    
+    .conflict-item:hover {
+      transform: translateX(4px);
+    }
+    
+    /* Progress bar for instructor load */
+    .progress-bar {
+      height: 6px;
+      border-radius: 3px;
+      background-color: #e5e7eb;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    }
+    
+    /* Enhanced instructor profile styles */
+    .instructor-avatar {
+      width: 100%;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    }
+    
+    .profile-icon-large {
+      font-size: 4rem;
+      color: #3b82f6;
+    }
+    
+    /* Enhanced conflict styles */
+    .conflict-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    
+    .conflict-critical {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .conflict-warning {
+      background-color: #fef3c7;
+      color: #d97706;
+    }
+    
+    .conflict-resolved {
+      background-color: #d1fae5;
+      color: #059669;
+    }
+    
+    .conflict-content {
+      flex: 1;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-gray-100">
  <div class="topbar">
         <h1>College of Computing and Information Sciences</h1>
 
@@ -54,109 +191,196 @@
             <a href="{{ url_for('conflicts.list_conflicts') }}"><i class="fas fa-exclamation-triangle"></i> Conflicts</a>     
         </div>
 
-
   <!-- MAIN DASHBOARD CONTENT -->
   <div class="main-content">
-    <!-- Welcome Banner -->
+    <!-- Welcome Banner (unchanged) -->
     <div class="welcome-card">
       <h2>Welcome back, {{ instructor_name or 'Instructor' }}!</h2>
-      <p>Here’s what’s happening in your department today.</p>
+      <p>Here's what's happening in your department today.</p>
     </div>
 
-    <!-- Stat Cards (Dynamic from DB) -->
-    <div class="dashboard-stats">
-      <div class="stat-card">
-        <p class="stat-label">Total Instructors</p>
-        <h3 class="stat-value">{{ stats.total_instructors }}</h3>
+    <!-- Enhanced Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+      <div class="stat-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-gray-500 text-sm font-medium">Total Instructors</p>
+          <i class="fas fa-chalkboard-teacher text-blue-500 text-lg"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-blue-600">{{ stats.total_instructors }}</h3>
+        <p class="text-xs text-gray-400 mt-2">Active faculty members</p>
       </div>
-      <div class="stat-card">
-        <p class="stat-label">Subjects</p>
-        <h3 class="stat-value">{{ stats.total_subjects }}</h3>
+      <div class="stat-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-gray-500 text-sm font-medium">Subjects</p>
+          <i class="fas fa-book text-green-500 text-lg"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-green-600">{{ stats.total_subjects }}</h3>
+        <p class="text-xs text-gray-400 mt-2">Courses being offered</p>
       </div>
-      <div class="stat-card">
-        <p class="stat-label">Rooms</p>
-        <h3 class="stat-value">{{ stats.total_rooms }}</h3>
+      <div class="stat-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-gray-500 text-sm font-medium">Rooms</p>
+          <i class="fas fa-door-open text-purple-500 text-lg"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-purple-600">{{ stats.total_rooms }}</h3>
+        <p class="text-xs text-gray-400 mt-2">Available classrooms</p>
       </div>
-      <div class="stat-card">
-        <p class="stat-label">Conflicts</p>
-        <h3 class="stat-value">{{ stats.conflicts }}</h3>
+      <div class="stat-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-gray-500 text-sm font-medium">Conflicts</p>
+          <i class="fas fa-exclamation-triangle text-red-500 text-lg"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-red-600">{{ stats.conflicts }}</h3>
+        <p class="text-xs text-gray-400 mt-2">Requiring attention</p>
       </div>
-      <div class="stat-card">
-        <p class="stat-label">Schedules</p>
-        <h3 class="stat-value">{{ stats.schedules }}</h3>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Feedback (Satisfied)</p>
-        <h3 class="stat-value">{{ stats.satisfied_feedback }}</h3>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Feedback (Unsatisfied)</p>
-        <h3 class="stat-value">{{ stats.unsatisfied_feedback }}</h3>
+      <div class="stat-card p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-gray-500 text-sm font-medium">Schedules</p>
+          <i class="fas fa-calendar-alt text-indigo-500 text-lg"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-indigo-600">{{ stats.schedules }}</h3>
+        <p class="text-xs text-gray-400 mt-2">Generated schedules</p>
       </div>
     </div>
 
-    <!-- Charts Section -->
-    <div class="charts-section">
-      <div class="chart-box">
-        <h4 class="chart-title">Room Usage</h4>
+    <!-- Enhanced Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="chart-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-lg font-semibold">Room Usage</h4>
+          <i class="fas fa-door-open text-blue-500"></i>
+        </div>
         <canvas id="roomChart" height="180"></canvas>
       </div>
-      <div class="chart-box">
-        <h4 class="chart-title">Instructor Load</h4>
+      <div class="chart-card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-lg font-semibold">Instructor Load</h4>
+          <i class="fas fa-chalkboard-teacher text-purple-500"></i>
+        </div>
         <canvas id="instructorChart" height="180"></canvas>
       </div>
     </div>
 
-    <!-- Top Instructors -->
-    <div class="schedule-box">
-      <h4 class="schedule-title">Top Instructors by Load</h4>
-      <div class="top-instructors">
+    <!-- Enhanced Top Instructors with Profile Icons -->
+    <div class="bg-white rounded-xl shadow-md p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-lg font-semibold">Top Instructors by Load</h4>
+        <i class="fas fa-trophy text-yellow-500"></i>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {% for instr in top_instructors %}
-          <div class="stat-card">
-            {% if instr.image %}
-              <img src="{{ url_for('static', filename='uploads/' ~ instr.image) }}" 
-                   alt="{{ instr.name }}" style="width:100%; border-radius:8px; max-height:150px; object-fit:cover;">
-            {% else %}
-              <img src="{{ url_for('static', filename='images/default.png') }}" 
-                   alt="{{ instr.name }}" style="width:100%; border-radius:8px; max-height:150px; object-fit:cover;">
-            {% endif %}
-            <h4>{{ instr.name }}</h4>
-            <p>{{ instr.current_units }} / {{ instr.max_load_units }} units</p>
-            <small>Subjects: {{ instr.subjects | join(', ') }}</small>
+          <div class="instructor-card p-4">
+            <div class="instructor-avatar">
+              {% if instr.image %}
+                <img src="{{ url_for('static', filename='uploads/' ~ instr.image) }}" 
+                     alt="{{ instr.name }}" class="w-full h-full object-cover">
+              {% else %}
+                <i class="fas fa-user-circle profile-icon-large"></i>
+              {% endif %}
+            </div>
+            <h4 class="font-semibold text-lg">{{ instr.name }}</h4>
+            <div class="flex justify-between items-center mt-1">
+              <p class="text-sm text-gray-600">{{ instr.current_units }} / {{ instr.max_load_units }} units</p>
+              <span class="text-xs font-medium {% if instr.current_units >= instr.max_load_units %}text-red-500{% else %}text-green-500{% endif %}">
+                {{ ((instr.current_units / instr.max_load_units) * 100) | round | int }}%
+              </span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: {{ (instr.current_units / instr.max_load_units) * 100 }}%"></div>
+            </div>
+            <div class="mt-2 flex items-center">
+              <i class="fas fa-book text-gray-400 text-xs mr-1"></i>
+              <small class="text-xs text-gray-500">{{ instr.subjects | length }} subjects</small>
+            </div>
           </div>
         {% endfor %}
       </div>
     </div>
 
-    <!-- Recent Conflicts -->
-    <div class="schedule-box">
-      <h4 class="schedule-title">Recent Conflicts</h4>
+    <!-- Enhanced Recent Conflicts with Icons -->
+    <div class="conflicts-card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-lg font-semibold">Recent Conflicts</h4>
+        <i class="fas fa-exclamation-triangle text-red-500"></i>
+      </div>
       {% if recent_conflicts %}
-        <ul class="schedule-list">
+        <ul class="space-y-3">
           {% for conflict in recent_conflicts %}
-            <li>
-              <strong>{{ conflict.conflict_type }}</strong> — 
-              {{ conflict.description }} ({{ conflict.status }})
+            <li class="conflict-item p-4 rounded-lg border-l-4 
+              {% if conflict.status == 'Resolved' %}bg-green-50 border-green-500
+              {% elif conflict.status == 'Pending' %}bg-yellow-50 border-yellow-500
+              {% else %}bg-red-50 border-red-500{% endif %}">
+              <div class="flex items-start">
+                <div class="conflict-icon 
+                  {% if conflict.status == 'Resolved' %}conflict-resolved
+                  {% elif conflict.status == 'Pending' %}conflict-warning
+                  {% else %}conflict-critical{% endif %}">
+                  {% if conflict.status == 'Resolved' %}
+                    <i class="fas fa-check"></i>
+                  {% elif conflict.status == 'Pending' %}
+                    <i class="fas fa-clock"></i>
+                  {% else %}
+                    <i class="fas fa-exclamation"></i>
+                  {% endif %}
+                </div>
+                <div class="conflict-content">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <strong class="{% if conflict.status == 'Resolved' %}text-green-700
+                                     {% elif conflict.status == 'Pending' %}text-yellow-700
+                                     {% else %}text-red-700{% endif %}">
+                        {{ conflict.conflict_type }}
+                      </strong> 
+                      <span class="text-gray-700 ml-2">{{ conflict.description }}</span>
+                    </div>
+                    <span class="inline-block px-2 py-1 text-xs rounded-full ml-2 
+                      {% if conflict.status == 'Resolved' %}bg-green-100 text-green-800
+                      {% elif conflict.status == 'Pending' %}bg-yellow-100 text-yellow-800
+                      {% else %}bg-red-100 text-red-800{% endif %}">
+                      {{ conflict.status }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-2 flex items-center">
+                    <i class="far fa-clock mr-1"></i> 
+                    {{ conflict.created_at or 'Recently' }}
+                    {% if conflict.priority %}
+                      <span class="ml-3 flex items-center">
+                        <i class="fas fa-flag mr-1 
+                          {% if conflict.priority == 'High' %}text-red-500
+                          {% elif conflict.priority == 'Medium' %}text-yellow-500
+                          {% else %}text-blue-500{% endif %}"></i>
+                        Priority: {{ conflict.priority }}
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p><em>No conflicts found.</em></p>
+        <div class="text-center py-8">
+          <div class="conflict-icon conflict-resolved mx-auto mb-3">
+            <i class="fas fa-check text-2xl"></i>
+          </div>
+          <p class="text-gray-500 italic">No conflicts found. Everything is running smoothly!</p>
+        </div>
       {% endif %}
     </div>
   </div>
+  
   <!-- Logout Confirmation Modal -->
-    <div id="logoutModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeLogoutModal()">&times;</span>
-            <h3>Confirm Logout</h3>
-            <p>Are you sure you want to logout?</p>
-            <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
-                <button type="submit" class="btn btn-danger">Logout</button>
-                <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
-            </form>
-        </div>
+  <div id="logoutModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeLogoutModal()">&times;</span>
+      <h3>Confirm Logout</h3>
+      <p>Are you sure you want to logout?</p>
+      <form id="logoutForm" method="GET" action="{{ url_for('logout') }}">
+        <button type="submit" class="btn btn-danger">Logout</button>
+        <button type="button" class="btn btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+      </form>
     </div>
+  </div>
 
   <!-- Chart.js library -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -206,29 +430,30 @@
       }
     });
   </script>
+  
   <script>
-        function openLogoutModal(event) {
-            event.preventDefault(); // Prevent the default anchor navigation
-            document.getElementById('logoutModal').style.display = 'block';
-        }
+    function openLogoutModal(event) {
+      event.preventDefault(); // Prevent the default anchor navigation
+      document.getElementById('logoutModal').style.display = 'block';
+    }
 
-        function closeLogoutModal() {
-            document.getElementById('logoutModal').style.display = 'none';
-        }
+    function closeLogoutModal() {
+      document.getElementById('logoutModal').style.display = 'none';
+    }
 
-        // Close modals on click outside
-        window.onclick = function(event) {
-            const deleteModal = document.getElementById('deleteModal');
-            const logoutModal = document.getElementById('logoutModal');
+    // Close modals on click outside
+    window.onclick = function(event) {
+      const deleteModal = document.getElementById('deleteModal');
+      const logoutModal = document.getElementById('logoutModal');
 
-            if (event.target === deleteModal) {
-                deleteModal.style.display = "none";
-            }
+      if (event.target === deleteModal) {
+        deleteModal.style.display = "none";
+      }
 
-            if (event.target === logoutModal) {
-                logoutModal.style.display = "none";
-            }
-        };
-    </script>
+      if (event.target === logoutModal) {
+        logoutModal.style.display = "none";
+      }
+    };
+  </script>
 </body>
 </html>

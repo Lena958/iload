@@ -6,6 +6,64 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/view.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+    <!-- Include jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* Additional styles for grouped table */
+        .instructor-group {
+            background-color: #f8fafc;
+        }
+        
+        .instructor-name {
+            font-weight: 600;
+            background-color: #e8f0fe;
+            vertical-align: top;
+        }
+        
+        .day-cell {
+            font-weight: 500;
+            vertical-align: top;
+        }
+        
+        /* Ensure proper table borders */
+        table {
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+        }
+        
+        /* Download button styling */
+        .btn-download {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-download:hover {
+            background-color: #218838;
+        }
+        
+        /* Hidden element for PDF generation */
+        .pdf-template {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 800px;
+            background: white;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
    <div class="topbar">
@@ -75,13 +133,17 @@
                     <a href="{{ url_for('load.view_all_schedules') }}" class="btn-back">Back</a>
                     <a href="{{ url_for('load.view_copy', q=request.args.get('q')) }}" class="btn-copy">View Copy</a>
                 {% endif %}
+                <!-- Download Button -->
+                <a href="#" class="btn-download" onclick="downloadSchedulePDF(event)">
+                    <i class="fas fa-download"></i> Download PDF
+                </a>
             </div>
         </div>
 
         {% if grid and days and time_slots %}
         <!-- GRID TIMETABLE VIEW -->
         <div class="table-container">
-            <table class="final-schedule">
+            <table class="final-schedule" id="scheduleTable">
                 <thead>
                     <tr>
                         <th>Time</th>
@@ -120,32 +182,109 @@
             {% endif %}
         </div>
         {% elif schedules %}
-        <!-- LIST VIEW -->
+        <!-- LIST VIEW (GROUPED BY INSTRUCTOR) -->
         <div class="table-container">
-            <table>
+            <table id="scheduleTable">
                 <thead>
                     <tr>
+                        <th>Instructor</th>
                         <th>Day</th>
                         <th>Time</th>
                         <th>Subject</th>
                         <th>Year & Section</th>
                         <th>Course</th>
-                        <th>Instructor</th>
                         <th>Room</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for sched in schedules %}
-                    <tr>
-                        <td>{{ sched.day_of_week }}</td>
-                        <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
-                        <td>{{ sched.subject_code }}</td>
-                        <td>{{ sched.year_level }} - {{ sched.section }}</td>
-                        <td>{{ sched.course }}</td>
-                        <td>{{ sched.instructor_name }}</td>
-                        <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
-                    </tr>
-                    {% endfor %}
+                    {% if schedules %}
+                        {# Group schedules by instructor #}
+                        {% set instructors = {} %}
+                        {% for sched in schedules %}
+                            {% if sched.instructor_name not in instructors %}
+                                {% set _ = instructors.update({sched.instructor_name: []}) %}
+                            {% endif %}
+                            {% set _ = instructors[sched.instructor_name].append(sched) %}
+                        {% endfor %}
+                        
+                        {# Display each instructor's schedules #}
+                        {% for instructor_name, instructor_schedules in instructors.items() %}
+                            {# First, group schedules by day for this instructor #}
+                            {% set day_groups = {} %}
+                            {% for sched in instructor_schedules %}
+                                {% if sched.day_of_week not in day_groups %}
+                                    {% set _ = day_groups.update({sched.day_of_week: []}) %}
+                                {% endif %}
+                                {% set _ = day_groups[sched.day_of_week].append(sched) %}
+                            {% endfor %}
+                            
+                            {# Calculate total number of rows needed for this instructor #}
+                            {% set total_rows = instructor_schedules|length %}
+                            
+                            {# Display first day's schedules #}
+                            {% set first_day = instructor_schedules[0].day_of_week %}
+                            {% set first_day_schedules = day_groups[first_day] %}
+                            {% set first_day_rowspan = first_day_schedules|length %}
+                            
+                            {# First row - show instructor and first day #}
+                            <tr class="instructor-group">
+                                <td rowspan="{{ total_rows }}" class="instructor-name">{{ instructor_name }}</td>
+                                <td rowspan="{{ first_day_rowspan }}" class="day-cell">{{ first_day }}</td>
+                                <td>{{ instructor_schedules[0].start_time_12 }} - {{ instructor_schedules[0].end_time_12 }}</td>
+                                <td>{{ instructor_schedules[0].subject_code }}</td>
+                                <td>{{ instructor_schedules[0].year_level }}-{{ instructor_schedules[0].section }}</td>
+                                <td>{{ instructor_schedules[0].course }}</td>
+                                <td>{{ instructor_schedules[0].room_number }} ({{ instructor_schedules[0].room_type|capitalize }})</td>
+                            </tr>
+                            
+                            {# Remaining rows for the first day #}
+                            {% for i in range(1, first_day_schedules|length) %}
+                                {% set sched = first_day_schedules[i] %}
+                                <tr>
+                                    <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                                    <td>{{ sched.subject_code }}</td>
+                                    <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                                    <td>{{ sched.course }}</td>
+                                    <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                                </tr>
+                            {% endfor %}
+                            
+                            {# Now display schedules for remaining days #}
+                            {% set displayed_days = [first_day] %}
+                            
+                            {% for day, day_schedules in day_groups.items() %}
+                                {% if day not in displayed_days %}
+                                    {# First row for this day - show day with rowspan #}
+                                    <tr>
+                                        <td rowspan="{{ day_schedules|length }}" class="day-cell">{{ day }}</td>
+                                        <td>{{ day_schedules[0].start_time_12 }} - {{ day_schedules[0].end_time_12 }}</td>
+                                        <td>{{ day_schedules[0].subject_code }}</td>
+                                        <td>{{ day_schedules[0].year_level }}-{{ day_schedules[0].section }}</td>
+                                        <td>{{ day_schedules[0].course }}</td>
+                                        <td>{{ day_schedules[0].room_number }} ({{ day_schedules[0].room_type|capitalize }})</td>
+                                    </tr>
+                                    
+                                    {# Remaining rows for this day #}
+                                    {% for i in range(1, day_schedules|length) %}
+                                        {% set sched = day_schedules[i] %}
+                                        <tr>
+                                            <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                                            <td>{{ sched.subject_code }}</td>
+                                            <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                                            <td>{{ sched.course }}</td>
+                                            <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                                        </tr>
+                                    {% endfor %}
+                                    
+                                    {% set _ = displayed_days.append(day) %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align:center;">No schedules found.</td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -153,6 +292,14 @@
             <p style="text-align:center;">No schedules found.</p>
         {% endif %}
     </div>
+
+    <!-- Hidden PDF Template -->
+    <div id="pdfTemplate" class="pdf-template">
+        <div id="pdfContent">
+            <!-- This will be populated with the schedule content -->
+        </div>
+    </div>
+
      <!-- Logout Confirmation Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content">
@@ -188,6 +335,137 @@
                 logoutModal.style.display = "none";
             }
         };
+
+        // Download PDF function
+        function downloadSchedulePDF(event) {
+            event.preventDefault();
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Get the schedule table
+            const scheduleTable = document.getElementById('scheduleTable');
+            if (!scheduleTable) {
+                alert('No schedule data available to download.');
+                return;
+            }
+            
+            // Show loading message
+            const downloadBtn = event.target.closest('.btn-download');
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+            downloadBtn.disabled = true;
+            
+            // Clone the table for PDF generation
+            const pdfTemplate = document.getElementById('pdfTemplate');
+            const pdfContent = document.getElementById('pdfContent');
+            
+            // Clear previous content
+            pdfContent.innerHTML = '';
+            
+            // Add title
+            const title = document.createElement('h2');
+            title.textContent = 'College of Computing and Information Sciences - Schedules';
+            title.style.textAlign = 'center';
+            title.style.marginBottom = '20px';
+            title.style.color = '#2c3e50';
+            pdfContent.appendChild(title);
+            
+            // Add search title if exists
+            {% if search_title %}
+            const searchTitle = document.createElement('h3');
+            searchTitle.textContent = '{{ search_title|upper }}';
+            searchTitle.style.textAlign = 'center';
+            searchTitle.style.marginBottom = '15px';
+            searchTitle.style.color = '#34495e';
+            pdfContent.appendChild(searchTitle);
+            {% endif %}
+            
+            // Clone and style the table for PDF
+            const tableClone = scheduleTable.cloneNode(true);
+            tableClone.style.width = '100%';
+            tableClone.style.fontSize = '10px';
+            tableClone.style.borderCollapse = 'collapse';
+            
+            // Style table cells for better PDF readability
+            const cells = tableClone.querySelectorAll('th, td');
+            cells.forEach(cell => {
+                cell.style.border = '1px solid #ddd';
+                cell.style.padding = '6px';
+                cell.style.fontSize = '9px';
+            });
+            
+            // Style header cells
+            const headerCells = tableClone.querySelectorAll('th');
+            headerCells.forEach(cell => {
+                cell.style.backgroundColor = '#34495e';
+                cell.style.color = 'white';
+                cell.style.fontWeight = 'bold';
+            });
+            
+            pdfContent.appendChild(tableClone);
+            
+            // Add total units if available
+            {% if total_units %}
+            const unitsPara = document.createElement('p');
+            unitsPara.textContent = `Total Units (Weekly): {{ total_units }}`;
+            unitsPara.style.marginTop = '15px';
+            unitsPara.style.fontWeight = 'bold';
+            unitsPara.style.textAlign = 'right';
+            pdfContent.appendChild(unitsPara);
+            {% endif %}
+            
+            // Add timestamp
+            const timestamp = document.createElement('p');
+            timestamp.textContent = `Generated on: ${new Date().toLocaleString()}`;
+            timestamp.style.marginTop = '10px';
+            timestamp.style.fontSize = '10px';
+            timestamp.style.color = '#7f8c8d';
+            timestamp.style.textAlign = 'center';
+            pdfContent.appendChild(timestamp);
+            
+            // Generate PDF using html2canvas
+            setTimeout(() => {
+                html2canvas(pdfContent, {
+                    scale: 2, // Higher quality
+                    useCORS: true,
+                    logging: false
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    let heightLeft = imgHeight;
+                    let position = 10;
+                    
+                    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                    
+                    // Add additional pages if needed
+                    while (heightLeft >= 0) {
+                        position = heightLeft - imgHeight;
+                        doc.addPage();
+                        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    
+                    // Save the PDF
+                    const fileName = 'schedules_' + new Date().toISOString().slice(0, 10) + '.pdf';
+                    doc.save(fileName);
+                    
+                    // Restore button state
+                    downloadBtn.innerHTML = originalText;
+                    downloadBtn.disabled = false;
+                }).catch(error => {
+                    console.error('Error generating PDF:', error);
+                    alert('Error generating PDF. Please try again.');
+                    
+                    // Restore button state
+                    downloadBtn.innerHTML = originalText;
+                    downloadBtn.disabled = false;
+                });
+            }, 500);
+        }
     </script>
 
 </body>

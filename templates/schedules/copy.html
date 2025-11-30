@@ -32,6 +32,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {# Create a tracking system for rowspans #}
+                    {% set rowspan_tracker = {} %}
+                    {% for day in days %}
+                        {% set _ = rowspan_tracker.update({day: {}}) %}
+                    {% endfor %}
+                    
                     {% for i in range(time_slots|length) %}
                     <tr>
                         <!-- Time column showing actual start and end time -->
@@ -50,18 +56,34 @@
                         </td>
 
                         {% for day in days %}
-                            {% set cell = grid[day][i] %}
-                            {% if cell == "skip" %}
-                                {# skip merged cells #}
-                            {% elif cell %}
-                                <td rowspan="{{ cell.rowspan }}" class="class-cell">
-                                    <strong>{{ cell.instructor_name }}</strong> <br>
-                                    {{ cell.subject_code }}<br>
-                                    {{ cell.course }} {{ cell.year_level }}-{{ cell.section }}<br>
-                                    {{ cell.room_number }} ({{ cell.room_type|capitalize }})
-                                </td>
+                            {# Check if this cell is occupied by a previous rowspan #}
+                            {% if rowspan_tracker[day][i] %}
+                                {# Skip this cell - it's already occupied #}
                             {% else %}
-                                <td></td>
+                                {% set cell = grid[day][i] %}
+                                {% if cell and cell != "skip" %}
+                                    {% if cell.rowspan > 1 %}
+                                        {# Mark future rows as occupied for this rowspan #}
+                                        {% for j in range(1, cell.rowspan) %}
+                                            {% set _ = rowspan_tracker[day].update({(i + j): true}) %}
+                                        {% endfor %}
+                                        <td rowspan="{{ cell.rowspan }}" class="class-cell">
+                                            <strong>{{ cell.instructor_name }}</strong> <br>
+                                            {{ cell.subject_code }}<br>
+                                            {{ cell.course }} {{ cell.year_level }}-{{ cell.section }}<br>
+                                            {{ cell.room_number }} ({{ cell.room_type|capitalize }})
+                                        </td>
+                                    {% else %}
+                                        <td class="class-cell">
+                                            <strong>{{ cell.instructor_name }}</strong> <br>
+                                            {{ cell.subject_code }}<br>
+                                            {{ cell.course }} {{ cell.year_level }}-{{ cell.section }}<br>
+                                            {{ cell.room_number }} ({{ cell.room_type|capitalize }})
+                                        </td>
+                                    {% endif %}
+                                {% else %}
+                                    <td></td>
+                                {% endif %}
                             {% endif %}
                         {% endfor %}
                     </tr>

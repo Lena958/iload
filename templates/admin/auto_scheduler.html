@@ -13,6 +13,32 @@
       font-weight: bold;
       border-color: #f5c2c7; /* subtle red borders */
     }
+    
+    /* Additional styles for grouped table */
+    .instructor-group {
+      background-color: #f8fafc;
+    }
+    
+    .instructor-name {
+      font-weight: 600;
+      background-color: #e8f0fe;
+      vertical-align: top;
+    }
+    
+    .day-cell {
+      font-weight: 500;
+      vertical-align: top;
+    }
+    
+    /* Ensure proper table borders */
+    table {
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+    }
   </style>
 </head>
 <body>
@@ -100,31 +126,102 @@
       <table>
         <thead>
           <tr>
+            <th scope="col">Instructor</th>
             <th scope="col">Day</th>
             <th scope="col">Time</th>
             <th scope="col">Subject</th>
             <th scope="col">Year & Section</th>
             <th scope="col">Course</th>
-            <th scope="col">Instructor</th>
             <th scope="col">Room</th>
           </tr>
         </thead>
         <tbody>
           {% if schedules %}
+            {# Group schedules by instructor #}
+            {% set instructors = {} %}
             {% for sched in schedules %}
-              <tr class="{% if sched.schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
-                <td>{{ sched.day_of_week }}</td>
-                <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
-                <td>{{ sched.subject_name }}</td>
-                <td>{{ sched.year_level }} - {{ sched.section }}</td>
-                <td>{{ sched.course }}</td>
-                <td>{{ sched.instructor_name }}</td>
-                <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+              {% if sched.instructor_name not in instructors %}
+                {% set _ = instructors.update({sched.instructor_name: []}) %}
+              {% endif %}
+              {% set _ = instructors[sched.instructor_name].append(sched) %}
+            {% endfor %}
+            
+            {# Display each instructor's schedules #}
+            {% for instructor_name, instructor_schedules in instructors.items() %}
+              {# First, group schedules by day for this instructor #}
+              {% set day_groups = {} %}
+              {% for sched in instructor_schedules %}
+                {% if sched.day_of_week not in day_groups %}
+                  {% set _ = day_groups.update({sched.day_of_week: []}) %}
+                {% endif %}
+                {% set _ = day_groups[sched.day_of_week].append(sched) %}
+              {% endfor %}
+              
+              {# Calculate total number of rows needed for this instructor #}
+              {% set total_rows = instructor_schedules|length %}
+              
+              {# Display first day's schedules #}
+              {% set first_day = instructor_schedules[0].day_of_week %}
+              {% set first_day_schedules = day_groups[first_day] %}
+              {% set first_day_rowspan = first_day_schedules|length %}
+              
+              {# First row - show instructor and first day #}
+              <tr class="instructor-group {% if instructor_schedules[0].schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
+                <td rowspan="{{ total_rows }}" class="instructor-name">{{ instructor_name }}</td>
+                <td rowspan="{{ first_day_rowspan }}" class="day-cell">{{ first_day }}</td>
+                <td>{{ instructor_schedules[0].start_time_12 }} - {{ instructor_schedules[0].end_time_12 }}</td>
+                <td>{{ instructor_schedules[0].subject_name }}</td>
+                <td>{{ instructor_schedules[0].year_level }}-{{ instructor_schedules[0].section }}</td>
+                <td>{{ instructor_schedules[0].course }}</td>
+                <td>{{ instructor_schedules[0].room_number }} ({{ instructor_schedules[0].room_type|capitalize }})</td>
               </tr>
+              
+              {# Remaining rows for the first day #}
+              {% for i in range(1, first_day_schedules|length) %}
+                {% set sched = first_day_schedules[i] %}
+                <tr class="{% if sched.schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
+                  <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                  <td>{{ sched.subject_name }}</td>
+                  <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                  <td>{{ sched.course }}</td>
+                  <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                </tr>
+              {% endfor %}
+              
+              {# Now display schedules for remaining days #}
+              {% set displayed_days = [first_day] %}
+              
+              {% for day, day_schedules in day_groups.items() %}
+                {% if day not in displayed_days %}
+                  {# First row for this day - show day with rowspan #}
+                  <tr class="{% if day_schedules[0].schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
+                    <td rowspan="{{ day_schedules|length }}" class="day-cell">{{ day }}</td>
+                    <td>{{ day_schedules[0].start_time_12 }} - {{ day_schedules[0].end_time_12 }}</td>
+                    <td>{{ day_schedules[0].subject_name }}</td>
+                    <td>{{ day_schedules[0].year_level }}-{{ day_schedules[0].section }}</td>
+                    <td>{{ day_schedules[0].course }}</td>
+                    <td>{{ day_schedules[0].room_number }} ({{ day_schedules[0].room_type|capitalize }})</td>
+                  </tr>
+                  
+                  {# Remaining rows for this day #}
+                  {% for i in range(1, day_schedules|length) %}
+                    {% set sched = day_schedules[i] %}
+                    <tr class="{% if sched.schedule_id in conflicting_schedule_ids %}conflict-row{% endif %}">
+                      <td>{{ sched.start_time_12 }} - {{ sched.end_time_12 }}</td>
+                      <td>{{ sched.subject_name }}</td>
+                      <td>{{ sched.year_level }}-{{ sched.section }}</td>
+                      <td>{{ sched.course }}</td>
+                      <td>{{ sched.room_number }} ({{ sched.room_type|capitalize }})</td>
+                    </tr>
+                  {% endfor %}
+                  
+                  {% set _ = displayed_days.append(day) %}
+                {% endif %}
+              {% endfor %}
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="8" style="text-align:center;">No pending schedules found.</td>
+              <td colspan="7" style="text-align:center;">No pending schedules found.</td>
             </tr>
           {% endif %}
         </tbody>

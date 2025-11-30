@@ -7,6 +7,81 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/instructors.css') }}">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/brand.png') }}">
+  <!-- Include jsPDF library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* Download button styling */
+    .btn-download {
+      background-color: #28a745;
+      color: white;
+      padding: 8px 16px;
+      text-decoration: none;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+      transition: background-color 0.3s;
+      margin-left: 10px;
+    }
+    
+    .btn-download:hover {
+      background-color: #218838;
+    }
+    
+    /* Filter styling */
+    .filter-container {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 10px;
+    }
+    
+    .filter-label {
+      margin-right: 8px;
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    .filter-select:focus {
+      outline: none;
+      border-color: #4a90e2;
+      box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+    }
+    
+    /* Table header layout */
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .table-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    /* Hidden element for PDF generation */
+    .pdf-template {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      width: 800px;
+      background: white;
+      padding: 20px;
+    }
+  </style>
 </head>
 <body>
  <div class="topbar">
@@ -58,6 +133,23 @@
         </div>
     <div class="table-header">
       <a href="{{ url_for('instructors.add_instructor') }}" class="btn">Add Instructor</a>
+      
+      <div class="table-header-actions">
+        <!-- Filter by Status -->
+        <div class="filter-container">
+          <label class="filter-label">Filter by Status:</label>
+          <select class="filter-select" id="statusFilter" onchange="filterInstructors()">
+            <option value="all">All Status</option>
+            <option value="Permanent">Permanent</option>
+            <option value="Part Time">Part Time</option>
+          </select>
+        </div>
+        
+        <!-- Download Button -->
+        <a href="#" class="btn-download" onclick="downloadInstructorsPDF(event)">
+          <i class="fas fa-download"></i> Download PDF
+        </a>
+      </div>
     </div>
 
     <!-- Flash Messages -->
@@ -69,7 +161,7 @@
 
     <!-- Table -->
     <div class="table-container">
-      <table>
+      <table id="instructorsTable">
         <thead>
           <tr>
             <th>Name</th>
@@ -80,9 +172,9 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="instructorsTableBody">
           {% for instructor in instructors %}
-          <tr>
+          <tr data-status="{{ instructor.status or 'N/A' }}">
             <td data-label="Name">{{ instructor.name }}</td>
             <td data-label="Max Load Units">{{ instructor.max_load_units }}</td>
             <td data-label="Department">{{ instructor.department or 'N/A' }}</td>
@@ -100,6 +192,13 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Hidden PDF Template -->
+  <div id="pdfTemplate" class="pdf-template">
+    <div id="pdfContent">
+      <!-- This will be populated with the instructors content -->
     </div>
   </div>
 
@@ -149,12 +248,165 @@
       document.getElementById('deleteModal').style.display = 'none';
     }
 
+    // Filter instructors by status
+    function filterInstructors() {
+      const filterValue = document.getElementById('statusFilter').value;
+      const rows = document.querySelectorAll('#instructorsTableBody tr');
+      
+      rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        
+        if (filterValue === 'all' || status === filterValue) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
     window.onclick = function(event) {
       const deleteModal = document.getElementById('deleteModal');
       const logoutModal = document.getElementById('logoutModal');
       if (event.target === deleteModal) deleteModal.style.display = "none";
       if (event.target === logoutModal) logoutModal.style.display = "none";
     };
+
+    // Download PDF function for instructors
+    function downloadInstructorsPDF(event) {
+      event.preventDefault();
+      
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Get the instructors table
+      const instructorsTable = document.getElementById('instructorsTable');
+      if (!instructorsTable) {
+        alert('No instructor data available to download.');
+        return;
+      }
+      
+      // Show loading message
+      const downloadBtn = event.target.closest('.btn-download');
+      const originalText = downloadBtn.innerHTML;
+      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+      downloadBtn.disabled = true;
+      
+      // Clone the table for PDF generation
+      const pdfTemplate = document.getElementById('pdfTemplate');
+      const pdfContent = document.getElementById('pdfContent');
+      
+      // Clear previous content
+      pdfContent.innerHTML = '';
+      
+      // Add title
+      const title = document.createElement('h2');
+      title.textContent = 'College of Computing and Information Sciences - Instructors';
+      title.style.textAlign = 'center';
+      title.style.marginBottom = '20px';
+      title.style.color = '#2c3e50';
+      pdfContent.appendChild(title);
+      
+      // Get current filter value for PDF title
+      const filterValue = document.getElementById('statusFilter').value;
+      if (filterValue !== 'all') {
+        const filterTitle = document.createElement('h3');
+        filterTitle.textContent = `Status: ${filterValue}`;
+        filterTitle.style.textAlign = 'center';
+        filterTitle.style.marginBottom = '15px';
+        filterTitle.style.color = '#34495e';
+        pdfContent.appendChild(filterTitle);
+      }
+      
+      // Clone and style the table for PDF (without action buttons)
+      const tableClone = instructorsTable.cloneNode(true);
+      tableClone.style.width = '100%';
+      tableClone.style.fontSize = '10px';
+      tableClone.style.borderCollapse = 'collapse';
+      
+      // Remove action column from the clone
+      const headerRow = tableClone.querySelector('thead tr');
+      const headerCells = headerRow.querySelectorAll('th');
+      headerCells[5].remove(); // Remove Actions header
+      
+      const rows = tableClone.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length > 5) {
+          cells[5].remove(); // Remove Actions cells
+        }
+      });
+      
+      // Style table cells for better PDF readability
+      const cells = tableClone.querySelectorAll('th, td');
+      cells.forEach(cell => {
+        cell.style.border = '1px solid #ddd';
+        cell.style.padding = '6px';
+        cell.style.fontSize = '9px';
+      });
+      
+      // Style header cells
+      const headerCellsStyled = tableClone.querySelectorAll('th');
+      headerCellsStyled.forEach(cell => {
+        cell.style.backgroundColor = '#34495e';
+        cell.style.color = 'white';
+        cell.style.fontWeight = 'bold';
+      });
+      
+      pdfContent.appendChild(tableClone);
+      
+      // Add timestamp
+      const timestamp = document.createElement('p');
+      timestamp.textContent = `Generated on: ${new Date().toLocaleString()}`;
+      timestamp.style.marginTop = '15px';
+      timestamp.style.fontSize = '10px';
+      timestamp.style.color = '#7f8c8d';
+      timestamp.style.textAlign = 'center';
+      pdfContent.appendChild(timestamp);
+      
+      // Generate PDF using html2canvas
+      setTimeout(() => {
+        html2canvas(pdfContent, {
+          scale: 2, // Higher quality
+          useCORS: true,
+          logging: false
+        }).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const imgHeight = canvas.height * imgWidth / canvas.width;
+          let heightLeft = imgHeight;
+          let position = 10;
+          
+          doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+          
+          // Add additional pages if needed
+          while (heightLeft >= 0) {
+            position = heightLeft - imgHeight;
+            doc.addPage();
+            doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+          
+          // Save the PDF with filter info in filename
+          const filterValue = document.getElementById('statusFilter').value;
+          const filterSuffix = filterValue !== 'all' ? `_${filterValue.replace(' ', '_')}` : '';
+          const fileName = `instructors${filterSuffix}_${new Date().toISOString().slice(0, 10)}.pdf`;
+          doc.save(fileName);
+          
+          // Restore button state
+          downloadBtn.innerHTML = originalText;
+          downloadBtn.disabled = false;
+        }).catch(error => {
+          console.error('Error generating PDF:', error);
+          alert('Error generating PDF. Please try again.');
+          
+          // Restore button state
+          downloadBtn.innerHTML = originalText;
+          downloadBtn.disabled = false;
+        });
+      }, 500);
+    }
 </script>
 </body>
 </html>
